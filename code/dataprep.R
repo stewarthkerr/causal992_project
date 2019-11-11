@@ -1,10 +1,10 @@
 #Load packages
 library(foreign)
 library(dplyr)
-library(fastDummies)
+## library(fastDummies)
 
 #Load data
-df <- read.spss('C:/Users/Stewart/Documents/2019fall/STAT992/project/randhrs1992_2016v1_SPSS/randhrs1992_2016v1.sav')
+df <- read.spss('../randhrs1992_2016v1_SPSS/randhrs1992_2016v1.sav')
 
 #Only includes people born in 1931 - 1941  
 df <- df %>%  
@@ -49,27 +49,8 @@ tv_covariates <- c(sprintf("R%dIEARN",1:12), sprintf("R%dMSTAT",1:12),
 #Subset the df
 df <- select(df, bl_covariates, tv_covariates)
 
-#Combine race + ethnicity
-df <- mutate(df, RACE_ETHN = 
-               case_when(
-                 RAHISPAN == "1.Hispanic" ~ "Hispanic",
-                 RARACEM == "1.White/Caucasian" ~ "NonHispWhite",
-                 RARACEM == "2.Black/African American" ~ "NonHispBlack",
-                 RARACEM == "3.Other" ~ "NonHispOther"
-                 )
-             ) %>% select(-RAHISPAN, -RARACEM)
+write.csv(df, "../data/data-cleaned.csv")
 
-#Determine people that started with negative wealth
-df$BASELINE_POVERTY = df$H1ATOTW < 0
 
-#Calculate wealth shock
-for (i in 1:11){
-  old_wealth = paste0("H",i,"ATOTW")
-  new_wealth = paste0("H",i+1,"ATOTW")
-  equation = paste0("df$",new_wealth,"/df$",old_wealth," <= 0.25")
-  ws = eval(parse(text=equation))
-  df[paste0("WS",i+1)] = ws
-}
-
-#Create dummy columns
-final <- dummy_cols(df)
+## #Create dummy columns
+## final <- dummy_cols(df)
