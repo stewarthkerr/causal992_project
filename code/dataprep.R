@@ -1,3 +1,8 @@
+## This is the script for subsetting the raw data.  The result is
+## saved in data/data-subset.csv.  This script is for documentation
+## and reproducibility purposes, and there is no need to rerun the
+## script.
+
 #Load packages
 library(foreign)
 library(dplyr)
@@ -49,7 +54,7 @@ tv_covariates <- c(sprintf("R%dIEARN",1:12), sprintf("R%dMSTAT",1:12),
 #Subset the df
 df <- select(df, bl_covariates, tv_covariates)
 
-write.csv(df, "../data/data-cleaned.csv")
+write.csv(df, "../data/data-subset.csv")
 
 
 ## #Create dummy columns

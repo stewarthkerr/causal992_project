@@ -1,6 +1,6 @@
 require(tidyverse)
 
-df = read.csv('../data/data-cleaned.csv')
+df = read.csv('../data/data-subset.csv')
 
 #Combine race + ethnicity
 df <- mutate(df, RACE_ETHN =
