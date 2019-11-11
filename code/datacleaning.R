@@ -59,3 +59,13 @@ for (w in 2:12) {
     eval(parse(text = paste0("df$", "R", w, "LIMADL=rw.adl.ind")))
 }
 df = select(df, -one_of(expand.indeces(adls)))
+
+## creating NAs for time-varying covariates that doesn't exist in data
+## (e.g. at wave 1)
+tv.cols <- c("RwIEARN", "RwMSTAT", "RwLBRF", "RwHIGOV", "RwPRPCNT",
+             "RwCOVR", "RwHIOTHP", "RwSHLT", "RwHLTHLM", "RwHOSP",
+             "RwOOPMD", "RwCHRCOND", "RwMLTMORB", "RwLIMADL",
+             "HwATOTW")
+nacovs = setdiff(expand.indeces(tv.cols), names(df))
+for (column in nacovs)
+    eval(parse(text = paste0("df$", column, "=NA")))
