@@ -1,6 +1,6 @@
-require(tidyverse)
-
 df = read.csv('../data/data-subset.csv')
+
+source("helpers.R")
 
 #Combine race + ethnicity
 df <- mutate(df, RACE_ETHN =
@@ -22,20 +22,6 @@ for (i in 1:11){
   equation = paste0("df$",new_wealth,"/df$",old_wealth," <= 0.25")
   ws = eval(parse(text=equation))
   df[paste0("WS",i+1)] = ws
-}
-
-## expand a vector of index variable (e.g. "HwATOTB") into a vector of
-## index variables for different waves (e.g. c("H1ATOTB", ...,
-## "H13TOTB"))
-expand.indeces <- function(svec) {
-    expand.single = function(str) {
-        if (str_detect(str, "w"))
-            return(map_chr(1:12,
-                           function(n) str_replace(str, "w", as.character(n))))
-        else
-            return(str)
-    }
-    unlist(map(svec, expand.single))
 }
 
 ## create variables for "chronic conditions" and "multimorbidity"
@@ -62,10 +48,10 @@ df = select(df, -one_of(expand.indeces(adls)))
 
 ## creating NAs for time-varying covariates that doesn't exist in data
 ## (e.g. at wave 1)
-tv.cols <- c("RwIEARN", "RwMSTAT", "RwLBRF", "RwHIGOV", "RwPRPCNT",
-             "RwCOVR", "RwHIOTHP", "RwSHLT", "RwHLTHLM", "RwHOSP",
-             "RwOOPMD", "RwCHRCOND", "RwMLTMORB", "RwLIMADL",
-             "HwATOTW")
-nacovs = setdiff(expand.indeces(tv.cols), names(df))
-for (column in nacovs)
-    eval(parse(text = paste0("df$", column, "=NA")))
+## nevermind... this doesn't make sense
+## nacovs = setdiff(expand.indeces(tv.cols), names(df))
+## for (column in nacovs) eval(parse(text = paste0("df$", column, "=NA")))
+
+## throw away observations with missing data
+df$X = NULL
+narate = unlist(map(df, function(x) mean(is.na(x))))
