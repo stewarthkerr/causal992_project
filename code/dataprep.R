@@ -23,11 +23,10 @@ df <- select(df, -contains('13'))
 #Age at enrollment, self-reported sex, self-reported race/ethnicity (non-Hispanic black, non-Hispanic white, Hispanic, or other race),
 #educational attainment (in years), household net worth, 
 #health behaviors including smoking status, alcohol consumption, physical activity, and body mass index
-bl_covariates <- c("HHIDPN","R1AGEM_E","R1AGEY_E","RAGENDER",
+bl_covariates <- c("HHIDPN","RABYEAR","RAGENDER",
                    "RARACEM","RAHISPAN","RAEDYRS","H1ATOTW","R1SMOKEV",
                    "R1SMOKEN","R3DRINKD","R1LTACTF","R1VGACTF",
-                   "R1HSWRKF","R1BMI","R1RISK","R1BEQLRG","RADTIMTDTH",
-                   "RADDATE")
+                   "R1HSWRKF","R1BMI","R1RISK","R1BEQLRG","RADYEAR")
 
 #Time varying covariates + wealth:
 #consumer price index-adjusted household income	marital status	

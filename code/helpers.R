@@ -1,10 +1,8 @@
 require(tidyverse)
 
-bl.cols <- c("HHIDPN","R1AGEM_E","R1AGEY_E","RAGENDER",
-             "RARACEM","RAHISPAN","RAEDYRS","H1ATOTW","R1SMOKEV",
-             "R1SMOKEN","R3DRINKD","R1LTACTF","R1VGACTF",
-             "R1HSWRKF","R1BMI","R1RISK","R1BEQLRG","RADTIMTDTH",
-             "RADDATE")
+bl.cols <- c("RABYEAR","RAGENDER", "RARACEM","RAHISPAN","RAEDYRS",
+             "H1ATOTW","R1SMOKEV", "R1SMOKEN","R3DRINKD","R1LTACTF",
+             "R1VGACTF", "R1HSWRKF","R1BMI","R1RISK","R1BEQLRG")
 
 tv.cols <- c("RwIEARN", "RwMSTAT", "RwLBRF", "RwHIGOV", "RwPRPCNT",
              "RwCOVR", "RwHIOTHP", "RwSHLT", "RwHLTHLM", "RwHOSP",
