@@ -49,3 +49,13 @@ for (w in 1:12) {
     eval(parse(text = paste0("df$", "R", w, "MLTMORB=rw.multi")))
 }
 df = select(df, -one_of(expand.indeces(diseases)))
+
+
+## create variable for "limitations in ADLs", called "RwLIMADL"
+adls = c("RwWALKRA", "RwBEDA", "RwDRESSA", "RwBATHA", "RwEATA")
+for (w in 2:12) {
+    rw.adl = select(df, one_of(str_replace(adls, "w", as.character(w))))
+    rw.adl.ind = apply(rw.adl, 1, function(x) c(any(x == "1.Yes")))
+    eval(parse(text = paste0("df$", "R", w, "LIMADL=rw.adl.ind")))
+}
+df = select(df, -one_of(expand.indeces(adls)))
