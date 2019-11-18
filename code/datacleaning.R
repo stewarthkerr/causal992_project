@@ -52,6 +52,9 @@ df = select(df, -one_of(expand.indeces(adls)))
 ## nacovs = setdiff(expand.indeces(tv.cols), names(df))
 ## for (column in nacovs) eval(parse(text = paste0("df$", column, "=NA")))
 
+df$R2OOPMD = NULL
+
 ## throw away observations with missing data
 df$X = NULL
-narate = unlist(map(df, function(x) mean(is.na(x))))
+narate = sort(unlist(map(df, function(x) mean(is.na(x)))), decreasing = T)
+head(narate, n = 50)

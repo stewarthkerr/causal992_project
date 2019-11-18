@@ -1,13 +1,5 @@
 require(tidyverse)
 
-bl.cols <- c("RABYEAR","RAGENDER", "RARACEM","RAHISPAN","RAEDYRS",
-             "H1ATOTW","R1SMOKEV", "R1SMOKEN","R3DRINKD","R1LTACTF",
-             "R1VGACTF", "R1HSWRKF","R1BMI","R1RISK","R1BEQLRG")
-
-tv.cols <- c("RwIEARN", "RwMSTAT", "RwLBRF", "RwHIGOV", "RwPRPCNT",
-             "RwCOVR", "RwHIOTHP", "RwSHLT", "RwHLTHLM", "RwHOSP",
-             "RwOOPMD", "RwCHRCOND", "RwMLTMORB", "RwLIMADL")
-
 ## expand a particular index `str` into a vector of indeces upto wave `n`
 expand.ind.upto = function(str, n) {
     ## up to 0 means no time-varying covariates
