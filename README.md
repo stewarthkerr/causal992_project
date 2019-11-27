@@ -1,5 +1,7 @@
 ## Getting started
-The CSV file `data/data-subset.csv` is the output of `dataprep.R`, so there is no need to rerun it.  However, `datacleaning.R`, which constructed several covariates and subsetted the data further, needs to be run before running any of the functions in `analysis.R`.  `helpers.R` contains a few helper functions for `analysis.R` and `datacleaning.R`.
+The CSV file `data/data-subset.csv` is the output of `dataprep.R`, so there is no need to rerun it. The CSV file `data/data-cleaned/csv` is the output of `datacleaning.R` in which several covariates are constructed and the data is further subsetted.
+
+`helpers.R` contains a few helper functions for `analysis.R` and `datacleaning.R`.
 
 ## Functions
 * `data.upto`: generate the data needed for analysis at wave `n`, see
@@ -7,7 +9,7 @@ The CSV file `data/data-subset.csv` is the output of `dataprep.R`, so there is n
 
 ## Structure of cleaned data
 ### Variables
-Below lowercase `w` is placeholder for wave, which ranges between 1 and 12.
+Below lowercase `w` is placeholder for wave, which ranges between 1 (1992) and 12 (2016) varying 2 years between each wave.
 
 * Variables of interest
   * `HHIDPN` (person ID)
