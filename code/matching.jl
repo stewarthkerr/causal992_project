@@ -1,8 +1,8 @@
-using JuMP, Clp, NamedArrays
+using JuMP, Gurobi, NamedArrays
 
 function matching(treated,control,distances,S)
     #Define match Model
-    m = Model(with_optimizer(Clp.Optimizer, LogLevel=1, Algorithm=4))
+    m = Model(with_optimizer(Gurobi.Optimizer, Presolve=0, OutputFlag=1))
     #Below variable takes 1 if edge exists, 0 if edge does not
     @variable(m, f[treated,control] >= 0)
 
