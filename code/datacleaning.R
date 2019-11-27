@@ -1,5 +1,6 @@
 df = read.csv('../data/data-subset.csv')
 
+#Load functions
 source("helpers.R")
 
 #Combine race + ethnicity
@@ -34,7 +35,7 @@ for (w in 1:12) {
     eval(parse(text = paste0("df$", "R", w, "CHRCOND=rw.dis.ind")))
     eval(parse(text = paste0("df$", "R", w, "MLTMORB=rw.multi")))
 }
-df = select(df, -one_of(expand.indeces(diseases)))
+df = select(df, -one_of(expand.indeces(diseases, start = 1, end = 12)))
 
 
 ## create variable for "limitations in ADLs", called "RwLIMADL"
@@ -44,7 +45,7 @@ for (w in 2:12) {
     rw.adl.ind = apply(rw.adl, 1, function(x) c(any(x == "1.Yes")))
     eval(parse(text = paste0("df$", "R", w, "LIMADL=rw.adl.ind")))
 }
-df = select(df, -one_of(expand.indeces(adls)))
+df = select(df, -one_of(expand.indeces(adls, start = 2, end = 12)))
 
 ## creating NAs for time-varying covariates that doesn't exist in data
 ## (e.g. at wave 1)
@@ -56,5 +57,8 @@ df$R2OOPMD = NULL
 
 ## throw away observations with missing data
 df$X = NULL
-narate = sort(unlist(map(df, function(x) mean(is.na(x)))), decreasing = T)
+narate = sort(unlist(purrr::map(df, function(x) mean(is.na(x)))), decreasing = T)
 head(narate, n = 50)
+
+## Save data as 
+df = write.csv(df,'../data/data-cleaned.csv')

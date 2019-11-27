@@ -1,39 +1,33 @@
+#Load cleaned data
+df = read.csv('../data/data-cleaned.csv')
+
+#Load functions
 source("helpers.R")
 
-#' Generate relevant columns for waves up to n-th wave
-#'
-#' @param df the cleaned data frame
-#' @return the dataset for analysis at wave n there is a new column
-#'     "hasws" which indicates whether the person had wealth shock on
-#'     or before wave n.  The response of interest is RADYEAR.
-data.upto = function(df, n) {
-    if (n <= 1 || n > 12) stop("Invalid wave number")
-    ## lag the time varying covariates
-    tv.cols <- c("RwIEARN", "RwMSTAT", "RwLBRF", "RwHIGOV", "RwPRPCNT",
-                 "RwCOVR", "RwHIOTHP", "RwSHLT", "RwHLTHLM", "RwHOSP",
-                 "RwOOPMD", "RwCHRCOND", "RwMLTMORB", "RwLIMADL")
-    tv.cols = unlist(map(tv.cols, function(x) expand.ind.upto(x, n - 1)))
-    tv.cols = intersect(tv.cols, names(df))
-    bl.cols = c("RABYEAR","RAGENDER", "RACE_ETHN","RAEDYRS",
-                "H1ATOTW","R1SMOKEV", "R1SMOKEN","R3DRINKD","R1LTACTF",
-                "R1VGACTF", "R1HSWRKF","R1BMI","R1RISK","R1BEQLRG")
-    special.cols = c("HHIDPN", "RADYEAR")
-    cols = c(tv.cols, bl.cols, special.cols)
-
-    ## construct WS before indicator
-    wsinds = paste0("WS", 2:n)
-    hasws = apply(df[,wsinds,drop = FALSE],1,any)
-
-    ## construct data frame
-    result = df[,cols]
-    result$hasws = hasws
-    
-    ## remove people with negative wealth to start with
-    result = result[!(df$BASELINE_POVERTY),]
-    
-    ##  remove people with NAs
-    result = result[complete.cases(result[,c(tv.cols, bl.cols)]),]
-}
-
 ## the sample sizes for each wave, from 2 to 12
-sample.sizes = unlist(map(2:12, function(n) nrow(data.upto(df, n))))
+#sample.sizes = unlist(purrr::map(2:12, function(n) nrow(data.upto(df, n))))
+
+#Remove people that are missing the baseline covariate
+# or had negative wealth to begin
+bl.cols = c("RABYEAR","RAGENDER", "RACE_ETHN","RAEDYRS",
+            "H1ATOTW","R1SMOKEV", "R1SMOKEN","R3DRINKD","R1LTACTF",
+            "R1VGACTF", "R1HSWRKF","R1BMI","R1RISK","R1BEQLRG")
+df_analysis = df[complete.cases(df[,c(bl.cols)]),]
+df_analysis = df_analysis[!(df$BASELINE_POVERTY),]
+
+#Create a matrix that contains all the people who ever experienced treatment
+df_analysis$hasws = apply(df_analysis[,paste0("WS", 2:12),drop = FALSE],1,any)
+treated = filter(df_analysis, hasws)
+
+#Create a matrix that contains all people that could possibly be a control
+controls = filter(df_analysis, !WS2)
+
+#Next, I think we should cycle through each wave sequentially
+# and calculate distance for those treated in that wave and all
+# their possible controls.
+# If it's impossible for a treated person to match a specific control
+# (ie the control has already had a treatment in a prior year) 
+# we set the distance to Inf
+
+
+
