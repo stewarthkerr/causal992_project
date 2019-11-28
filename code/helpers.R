@@ -1,5 +1,7 @@
 require(tidyverse)
 require(fastDummies)
+require(MASS)
+require(HDMD)
 
 ## expand a particular index `str` into a vector of indeces upto wave `n`
 expand.ind.upto = function(str, start = 1, end) {

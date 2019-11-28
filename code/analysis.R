@@ -32,8 +32,23 @@ controls = filter(df_analysis, !WS2)
 for (wave in 2:12){
   #Subset the data to this wave
   df_work = data.upto(df_analysis, wave)
-  print(paste0(wave,":",nrow(df_work)))
+  print(paste0("Wave: ", wave,", N (Treated+Control) = ",nrow(df_work)))
   
-  #Convert the character/factor columns to dummy columns, drop the character/factor columns
+  #Convert factor columns to numeric
+  # -- Some of the factor columns have an inherent ordering while others don't
+  # -- We should probably treat these differently
+  #df_work = dummy_cols(df_work, remove_first_dummy = TRUE) #Converts all factor columns to a bunch of dummy columns
+  df_work = sapply(df_work, as.numeric) #Converts all factors to their numeric level
+  
+  #Keep only the numeric columns
+  #df_work = df_work[, sapply(df_work, is.numeric)] 
+  
+  #Calculate generalized inverse of cov matrix
+  # -- use generalized inverse because cov matrix is sometimes singular? problem?
+  SGINV = ginv(cov(df_work))
+
+  #Calculate mahalanobis distance
+  #df_dist = mahalanobis(df_work, colMeans(df_work), cov(df_work))
+  df_dist = pairwise.mahalanobis(df_work, grouping = "HHIDPN", cov = SGINV, inverted = TRUE)
 } 
 
