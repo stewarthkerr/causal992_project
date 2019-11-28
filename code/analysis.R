@@ -28,6 +28,12 @@ controls = filter(df_analysis, !WS2)
 # If it's impossible for a treated person to match a specific control
 # (ie the control has already had a treatment in a prior year) 
 # we set the distance to Inf
-
-
+# USE DUMMY_COLS()
+for (wave in 2:12){
+  #Subset the data to this wave
+  df_work = data.upto(df_analysis, wave)
+  print(paste0(wave,":",nrow(df_work)))
+  
+  #Convert the character/factor columns to dummy columns, drop the character/factor columns
+} 
 

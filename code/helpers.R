@@ -1,4 +1,5 @@
 require(tidyverse)
+require(fastDummies)
 
 ## expand a particular index `str` into a vector of indeces upto wave `n`
 expand.ind.upto = function(str, start = 1, end) {
@@ -24,10 +25,22 @@ expand.indeces = function(svec, start = 1, end) {
 #'
 #' @param df the cleaned data frame
 #' @return the dataset for analysis at wave n there is a new column
-#'     "hasws" which indicates whether the person had wealth shock on
+#'     "priorWS" which indicates whether the person had wealth shock on
 #'     or before wave n.  The response of interest is RADYEAR.
 data.upto = function(df, n) {
   if (n <= 1 || n > 12) stop("Invalid wave number")
+  
+  ## Remove people with negative wealth to start with
+  df = df[!(df$BASELINE_POVERTY),]
+  
+  ## Remove people that have already died
+  df = df[!(df$DeathWave < n),]
+  
+  ## construct WS before indicator and remove those people
+  wsinds = paste0("WS", 2:max(2,(n-1)))
+  df$priorWS = apply(df[,wsinds,drop = FALSE],1,any)
+  df = df[!(df$priorWS),]
+  
   ## lag the time varying covariates
   tv.cols <- c("RwIEARN", "RwMSTAT", "RwLBRF", "RwHIGOV", "RwPRPCNT",
                "RwCOVR", "RwHIOTHP", "RwSHLT", "RwHLTHLM", "RwHOSP",
@@ -40,17 +53,9 @@ data.upto = function(df, n) {
   special.cols = c("HHIDPN", "RADYEAR")
   cols = c(tv.cols, bl.cols, special.cols)
   
-  ## construct WS before indicator
-  wsinds = paste0("WS", 2:n)
-  hasws = apply(df[,wsinds,drop = FALSE],1,any)
-  
   ## construct data frame
   result = df[,cols]
-  result$hasws = hasws
-  
-  ## remove people with negative wealth to start with
-  result = result[!(df$BASELINE_POVERTY),]
-  
+
   ##  remove people with NAs
   result = result[complete.cases(result[,c(tv.cols, bl.cols)]),]
   

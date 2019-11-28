@@ -25,6 +25,9 @@ for (i in 1:11){
   df[paste0("WS",i+1)] = ws
 }
 
+#Calculate wave of death
+df$DeathWave = floor(1+((df$RADYEAR-1992)/2))
+
 ## create variables for "chronic conditions" and "multimorbidity"
 ## called "RwCHRCOND" and "RwMLTMORB"
 diseases = c("RwHIBPE", "RwDIABE", "RwHEARTE", "RwSTROKE", "RwLUNGE", "RwCANCRE", "RwPSYCHE", "RwARTHRE")
