@@ -1,10 +1,46 @@
-using JuMP, Gurobi, NamedArrays
+using JuMP, Gurobi
+using CSV, DataFrames, DataFramesMeta
+
+df = CSV.read("../data/data-stacked.csv")
+
+function inv_cov(df::DataFrame)::Matrix{Float64}
+    mat = Matrix(df[:, Not([:HHIDPN, :FIRST_WS, :W])])
+    inv(mat' * mat)
+end
+
+# for calculating the distance
+function match_dist(trt::Integer, ctrl::Integer, S::Matrix, df::DataFrame, wsdict::Dict)::Float64
+    wave = get(wsdict, trt, -2)
+    wave != -2 || error("trt not found")
+
+    cwave = get(wsdict, ctrl, -2)
+    cwave != -2 || error("ctrl not found")
+
+    # if control is already treated
+    if cwave != -1 && cwave <= wave
+        return Inf
+    end
+
+    trow = @where(df, :HHIDPN .== trt, :W .== wave)
+    crow = @where(df, :HHIDPN .== ctrl, :W .== wave)
+
+    ((nrow(trow) == 1) && (nrow(crow) == 1)) || error("multiple wave measurements??")
+    t = Vector(trow[1,:][Not([:HHIDPN, :FIRST_WS, :W])])
+    c = Vector(crow[1,:][Not([:HHIDPN, :FIRST_WS, :W])])
+    d = t - c
+
+    return d' * S * d
+end
+
+S = inv_cov(df)
+wsdict = Dict(r[:HHIDPN] => r[:FIRST_WS] for r in eachrow(unique(df[:,[:HHIDPN, :FIRST_WS]])))
+match_dist(45943010, 57894020, S, df, wsdict)
 
 function matching(treated,control,distances,S)
     #Define match Model
     m = Model(with_optimizer(Gurobi.Optimizer, Presolve=0, OutputFlag=1))
     #Below variable takes 1 if edge exists, 0 if edge does not
-    @variable(m, f[treated,control] >= 0)
+    @variable(m, f[treated,control] >= 0, Bin)
 
     # Each person is in at most 1 set
     @constraint(m, a[j in control], sum(f[i,j] for i in treated) <= 1 )
