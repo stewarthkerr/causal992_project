@@ -10,6 +10,10 @@ end
 
 # for calculating the distance
 function match_dist(trt::Integer, ctrl::Integer, S::Matrix, df::DataFrame, wsdict::Dict)::Float64
+    if trt == ctrl
+        return Inf
+    end
+    
     wave = get(wsdict, trt, -2)
     wave != -2 || error("trt not found")
 
@@ -24,7 +28,14 @@ function match_dist(trt::Integer, ctrl::Integer, S::Matrix, df::DataFrame, wsdic
     trow = @where(df, :HHIDPN .== trt, :W .== wave)
     crow = @where(df, :HHIDPN .== ctrl, :W .== wave)
 
-    ((nrow(trow) == 1) && (nrow(crow) == 1)) || error("multiple wave measurements??")
+    numtrt = nrow(trow)
+    numctrl = nrow(crow)
+
+    (numtrt <= 1) && (numctrl <= 1) || error("$numtrt, $numctrl, $trt, $ctrl, $wave")
+
+    if numctrl == 0 || numtrt == 0
+        return Inf
+    end
     t = Vector(trow[1,:][Not([:HHIDPN, :FIRST_WS, :W])])
     c = Vector(crow[1,:][Not([:HHIDPN, :FIRST_WS, :W])])
     d = t - c
@@ -36,11 +47,14 @@ S = inv_cov(df)
 wsdict = Dict(r[:HHIDPN] => r[:FIRST_WS] for r in eachrow(unique(df[:,[:HHIDPN, :FIRST_WS]])))
 match_dist(45943010, 57894020, S, df, wsdict)
 
-function matching(treated,control,distances,S)
+treated = [ i for i in keys(wsdict) if wsdict[i] != -1 ]
+control = keys(wsdict)
+
+function matching(treated,control,distance,numsets)
     #Define match Model
     m = Model(with_optimizer(Gurobi.Optimizer, Presolve=0, OutputFlag=1))
     #Below variable takes 1 if edge exists, 0 if edge does not
-    @variable(m, f[treated,control] >= 0, Bin)
+    @variable(m, f[treated,control], Bin)
 
     # Each person is in at most 1 set
     @constraint(m, a[j in control], sum(f[i,j] for i in treated) <= 1 )
@@ -50,30 +64,17 @@ function matching(treated,control,distances,S)
     #@constraint(m, sum(x[i,i] for i in treated, i in control) <= 0)
 
     #There are a total of S sets
-    @constraint(m, sum(f[i,j] for i in treated, j in control) >= S)
+    @constraint(m, sum(f[i,j] for i in treated, j in control) >= numsets)
 
-    @objective(m, Min, sum(f[i,j]*distances[i,j] for i in treated, j in control ))
+    @objective(m, Min, sum(f[i,j]* distance(i,j,S,df,wsdict) for i in treated, j in control ))
 
     optimize!(m)
 
-    assignment = NamedArray( [ (JuMP.value(f[i,j])) for i in treated, j in control ], (treated, control), ("treated","control"))
+    assignment = [ (JuMP.value(f[i,j])) for i in treated, j in control ]
 
     return assignment
 end
 
-function matchingExample()
-    #Vector of treated individuals
-    treated = collect(1:10)
-    #Vector of control pool
-    control = collect(1:50)
-    #Number of desired matched sets
-    S = length(treated)
-    #Matrix of distances
-    raw = randn(length(treated),length(control))
-    distances = NamedArray( raw, (treated,control), ("treated","control"))
+matching(treated, control, match_dist, 10)
 
-    x = matching(treated,control,distances,S)
-    for i in 1:length(treated)
-        print("\nSubject $i is matched to Control $(argmax(x[i,:]))")
-    end
-end
+dists = [ match_dist(i,j,S,df,wsdict) for i in treated, j in control];
