@@ -16,13 +16,16 @@ df <- mutate(df, RACE_ETHN =
 #Determine people that started with negative wealth
 df$BASELINE_POVERTY = df$H1ATOTW < 0
 
-#Calculate wealth shock
+#Calculate wealth shock & first wealth shock
+df$FIRST_WS = -1
 for (i in 1:11){
   old_wealth = paste0("H",i,"ATOTW")
   new_wealth = paste0("H",i+1,"ATOTW")
   equation = paste0("df$",new_wealth,"/df$",old_wealth," <= 0.25")
   ws = eval(parse(text=equation))
   df[paste0("WS",i+1)] = ws
+  
+  df$FIRST_WS = ifelse(df$FIRST_WS == -1 & (!is.na(ws) & ws), i+1, df$FIRST_WS)
 }
 
 #Calculate wave of death

@@ -23,37 +23,46 @@ expand.indeces = function(svec, start = 1, end) {
     unlist(map(svec, expand.single))
 }
 
+
+
 #' Generate relevant columns for waves up to n-th wave
 #'
 #' @param df the cleaned data frame
 #' @return the dataset for analysis at wave n there is a new column
 #'     "priorWS" which indicates whether the person had wealth shock on
 #'     or before wave n.  The response of interest is RADYEAR.
-data.upto = function(df, n) {
-  if (n <= 1 || n > 12) stop("Invalid wave number")
+data.upto = function(df, W) {
+  if (W <= 1 || W > 12) stop("Invalid wave number")
   
   ## Remove people with negative wealth to start with
   df = df[!(df$BASELINE_POVERTY),]
   
   ## Remove people that have already died
-  df = df[!(df$DeathWave < n),]
+  df = df[!(df$DeathWave < W),]
   
-  ## construct WS before indicator and remove those people
-  wsinds = paste0("WS", 2:max(2,(n-1)))
-  df$priorWS = apply(df[,wsinds,drop = FALSE],1,any)
-  df = df[!(df$priorWS),]
+  ## construct WS before indicator
+  #wsinds = paste0("WS", 2:max(2,(n-1)))
+  #df$priorWS = apply(df[,wsinds,drop = FALSE],1,any)
+  #df = df[!(df$priorWS),]
+  
+  ## Add the wave column
+  df$W = W
   
   ## lag the time varying covariates
+  ## NOTE - We are throwing out RwOOPMD and RwLIMDL
+  ##        because these weren't asked for early waves
   tv.cols <- c("RwIEARN", "RwMSTAT", "RwLBRF", "RwHIGOV", "RwPRPCNT",
                "RwCOVR", "RwHIOTHP", "RwSHLT", "RwHLTHLM", "RwHOSP",
-               "RwOOPMD", "RwCHRCOND", "RwMLTMORB", "RwLIMADL")
-  tv.cols = unlist(purrr::map(tv.cols, function(x) expand.ind.upto(x, start = 1, end = n - 1)))
+               "RwCHRCOND", "RwMLTMORB")
+  tv.cols = unlist(purrr::map(tv.cols, function(x) expand.ind.upto(x, start = W - 1, end = W - 1)))
   tv.cols = intersect(tv.cols, names(df))
+  
+  ## Baseline 
   bl.cols = c("RABYEAR","RAGENDER", "RACE_ETHN","RAEDYRS",
               "H1ATOTW","R1SMOKEV", "R1SMOKEN","R3DRINKD","R1LTACTF",
               "R1VGACTF", "R1BMI","R1RISK","R1BEQLRG")
-  special.cols = c("HHIDPN", "RADYEAR")
-  cols = c(tv.cols, bl.cols, special.cols)
+  special.cols = c("HHIDPN", "W","FIRST_WS", "RADYEAR")
+  cols = c(special.cols, tv.cols, bl.cols)
   
   ## construct data frame
   result = df[,cols]
