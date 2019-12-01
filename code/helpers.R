@@ -51,7 +51,7 @@ data.upto = function(df, n) {
   tv.cols = intersect(tv.cols, names(df))
   bl.cols = c("RABYEAR","RAGENDER", "RACE_ETHN","RAEDYRS",
               "H1ATOTW","R1SMOKEV", "R1SMOKEN","R3DRINKD","R1LTACTF",
-              "R1VGACTF", "R1HSWRKF","R1BMI","R1RISK","R1BEQLRG")
+              "R1VGACTF", "R1BMI","R1RISK","R1BEQLRG")
   special.cols = c("HHIDPN", "RADYEAR")
   cols = c(tv.cols, bl.cols, special.cols)
   

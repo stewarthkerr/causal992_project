@@ -11,7 +11,7 @@ source("helpers.R")
 # or had negative wealth to begin
 bl.cols = c("RABYEAR","RAGENDER", "RACE_ETHN","RAEDYRS",
             "H1ATOTW","R1SMOKEV", "R1SMOKEN","R3DRINKD","R1LTACTF",
-            "R1VGACTF", "R1HSWRKF","R1BMI","R1RISK","R1BEQLRG")
+            "R1VGACTF", "R1BMI","R1RISK","R1BEQLRG")
 df_analysis = df[complete.cases(df[,c(bl.cols)]),]
 df_analysis = df_analysis[!(df$BASELINE_POVERTY),]
 

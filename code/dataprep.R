@@ -26,7 +26,7 @@ df <- select(df, -contains('13'))
 bl_covariates <- c("HHIDPN","RABYEAR","RAGENDER",
                    "RARACEM","RAHISPAN","RAEDYRS","H1ATOTW","R1SMOKEV",
                    "R1SMOKEN","R3DRINKD","R1LTACTF","R1VGACTF",
-                   "R1HSWRKF","R1BMI","R1RISK","R1BEQLRG","RADYEAR")
+                   "R1BMI","R1RISK","R1BEQLRG","RADYEAR")
 
 #Time varying covariates + wealth:
 #consumer price index-adjusted household income	marital status	
