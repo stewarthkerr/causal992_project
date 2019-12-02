@@ -26,8 +26,8 @@ function match_dist(trt::Int64, ctrl::Int64, S::Matrix{Float64}, df::DataFrame, 
         return LARGE_VAL
     end
 
-    trow::Union{Nothing,Vector{Float64}} = get(datadict, (trt,wave)::Tuple, nothing)
-    crow::Union{Nothing,Vector{Float64}} = get(datadict, (ctrl,wave)::Tuple, nothing)
+    trow::Union{Nothing,Vector{Float64}} = get(datadict, (trt,wave-1)::Tuple, nothing)
+    crow::Union{Nothing,Vector{Float64}} = get(datadict, (ctrl,wave-1)::Tuple, nothing)
 
     if trow == nothing || crow == nothing
         return LARGE_VAL
@@ -43,7 +43,7 @@ datadict = Dict( (r[:HHIDPN], r[:W])::Tuple{Int64,Int64} => Vector(r[Not([:HHIDP
 
 # count the number of matchable treated subjects
 
-count = sum([(t,wsdict[t]) in keys(datadict) for t in treated])
+count = sum([(t,wsdict[t]-1) in keys(datadict) for t in treated])
 
 # @benchmark match_dist(45943010, 57894020, S, df, wsdict,datadict)
 
@@ -92,4 +92,4 @@ function matching(treated,control,distance,numsets)
 end
 
 match = matching(treated,control,match_dist,count)
-
+CSV.write("../data/matched-pairs.csv", DataFrame(match), writeheader=false)
