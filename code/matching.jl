@@ -1,13 +1,16 @@
 using JuMP, Gurobi
 using CSV, DataFrames
 
+LARGE_VAL = 1e14
+df = CSV.read("../data/data-stacked.csv")
+
 function inv_cov(df::DataFrame)::Matrix{Float64}
     mat = Matrix(df[:, Not([:HHIDPN, :FIRST_WS, :W])])
     inv(mat' * mat)
 end
 
 # for calculating the distance
-function match_dist(trt::Int64, ctrl::Int64, S::Matrix{Float64}, df::DataFrame, wsdict::Dict, datadict::Dict, LARGE_VAL::Float64)::Float64
+function match_dist(trt::Int64, ctrl::Int64, S::Matrix{Float64}, df::DataFrame, wsdict::Dict, datadict::Dict)::Float64
     if trt == ctrl
         return LARGE_VAL
     end
@@ -23,8 +26,8 @@ function match_dist(trt::Int64, ctrl::Int64, S::Matrix{Float64}, df::DataFrame, 
         return LARGE_VAL
     end
 
-    trow::Union{Nothing,Vector{Float64}} = get(datadict, (trt,wave)::Tuple, nothing)
-    crow::Union{Nothing,Vector{Float64}} = get(datadict, (ctrl,wave)::Tuple, nothing)
+    trow::Union{Nothing,Vector{Float64}} = get(datadict, (trt,wave-1)::Tuple, nothing)
+    crow::Union{Nothing,Vector{Float64}} = get(datadict, (ctrl,wave-1)::Tuple, nothing)
 
     if trow == nothing || crow == nothing
         return LARGE_VAL
@@ -33,6 +36,19 @@ function match_dist(trt::Int64, ctrl::Int64, S::Matrix{Float64}, df::DataFrame, 
 
     return d' * S * d
 end
+
+S = inv_cov(df)
+wsdict = Dict(r[:HHIDPN] => r[:FIRST_WS] for r in eachrow(unique(df[:,[:HHIDPN, :FIRST_WS]])))
+datadict = Dict( (r[:HHIDPN], r[:W])::Tuple{Int64,Int64} => Vector(r[Not([:HHIDPN, :FIRST_WS, :W])])::Vector{Float64} for r in eachrow(df) )
+
+# count the number of matchable treated subjects
+
+count = sum([(t,wsdict[t]-1) in keys(datadict) for t in treated])
+
+# @benchmark match_dist(45943010, 57894020, S, df, wsdict,datadict)
+
+treated = [ i for i in keys(wsdict) if wsdict[i] != -1 ]
+control = collect(keys(wsdict))
 
 function matched_sets(treated, control, amat::Matrix)
     set = Vector{Tuple{Int64,Int64}}(undef, 0)
@@ -43,11 +59,9 @@ function matched_sets(treated, control, amat::Matrix)
             end
         end
     end
-
-    return set
+    set
 end
 
-#We should really pass wsdict, datadict, df, S to this function
 function matching(treated,control,distance,numsets)
     #Define match Model
     m = Model(with_optimizer(Gurobi.Optimizer, Presolve=0, OutputFlag=1))
@@ -59,7 +73,7 @@ function matching(treated,control,distance,numsets)
     @constraint(m, a2[i in treated], sum(f[i,j] for j in control) <= 1 )
 
     # Each person is not matched to themself
-    #@constraint(m, sum(x[i,i] for i in treated) <= 0)
+    #@constraint(m, sum(x[i,i] for i in treated, i in control) <= 0)
 
     #There are a total of S sets
     @constraint(m, sum(f[i,j] for i in treated, j in control) >= numsets)
@@ -77,98 +91,5 @@ function matching(treated,control,distance,numsets)
     return matched_sets(treated,control,assignment)
 end
 
-#=
-function matchingWithDist(df,distance,numsets)
-    wsdict = Dict(r[:HHIDPN] => r[:FIRST_WS] for r in eachrow(unique(df[:,[:HHIDPN, :FIRST_WS]])))
-    treated_keys = [ i for i in keys(wsdict) if wsdict[i] != -1 ]
-    control_keys = [ i for i in keys(wsdict)]
-
-    treated = collect(1:length(treated_keys))
-    control = collect(1:length(control_keys))
-
-    #Define match Model
-    m = Model(with_optimizer(Gurobi.Optimizer, Presolve=0, OutputFlag=1))
-    #Below variable takes 1 if edge exists, 0 if edge does not
-    @variable(m, f[treated,control], Bin)
-
-    # Each person is in at most 1 set
-    @constraint(m, a[j in control], sum(f[i,j] for i in treated) <= 1 )
-    @constraint(m, a2[i in treated], sum(f[i,j] for j in control) <= 1 )
-
-    # Each person is not matched to themself
-    @constraint(m, sum(f[i,i] for i in treated) <= 0)
-
-    #There are a total of S sets
-    @constraint(m, sum(f[i,j] for i in treated, j in control) >= numsets)
-
-    @objective(m, Min, sum(f[i,j] * distance[i,j] for i in treated, j in control ))
-
-    optimize!(m)
-
-    assignment = [ (JuMP.value(f[i,j])) for i in treated, j in control ]
-
-    return assignment
-end
-
-function matchingExample()
-    #Vector of treated individuals
-    treated = collect(1:10)
-    #Vector of control pool
-    control = collect(1:50)
-    #Number of desired matched sets
-    S = length(treated)
-    #Matrix of distances
-    raw = randn(length(treated),length(control))
-    distances = NamedArray( raw, (treated,control), ("treated","control"))
-
-    x = matching(treated,control,distances,S)
-    for i in 1:length(treated)
-        print("\nSubject $i is matched to Control $(argmax(x[i,:]))")
-    end
-end
-=#
-
-#Need to clean this later
-function createDistMatrix(treated,control,DIST)
-    global trt_iter = 1
-    for i in treated
-        control_iter = 1
-        for j in control
-            DIST[trt_iter,control_iter] = match_dist(i,j,S, df, wsdict)
-            control_iter = control_iter + 1
-        end
-        global trt_iter = trt_iter + 1
-    end  
-end
-
-#This is so it doesn't run automatically when we include
-function main()
-    LARGE_VAL = 1e14
-    df = CSV.read("../data/data-stacked.csv")
-    #Below for windows
-    #df = CSV.read("..\\data\\data-stacked.csv")
-    #df = CSV.read("C:\\Users\\Stewart\\Documents\\2019fall\\STAT992\\project\\data\\data-stacked.csv")
-
-    #Create covariance matrix and dictionaries
-    S = inv_cov(df)
-    wsdict = Dict(r[:HHIDPN] => r[:FIRST_WS] for r in eachrow(unique(df[:,[:HHIDPN, :FIRST_WS]])))
-    datadict = Dict( (r[:HHIDPN], r[:W])::Tuple{Int64,Int64} => Vector(r[Not([:HHIDPN, :FIRST_WS, :W])])::Vector{Float64} for r in eachrow(df) )
-
-    #Determine who were treated. All are in control
-    treated = [ i for i in keys(wsdict) if wsdict[i] != -1 ]
-    control = collect(keys(wsdict))
-
-    #Get number of possible matchable treated subjects
-    count = sum([(t,wsdict[t]) in keys(datadict) for t in treated])
-
-    #Perform the match
-    match = matching(treated,control,match_dist,count)
-
-    #CSV.write("../data/matched-sets.csv", DataFrame(match), writeheader=false)
-    #Below for windows
-    #CSV.write("..\\data\\matched-sets.csv", DataFrame(match), writeheader=false)
-    return match
-end
-
-#Uncomment below line to run the match
-#match = main()
+# match = matching(treated,control,match_dist,count)
+# CSV.write("../data/matched-pairs.csv", DataFrame(match), writeheader=false)
