@@ -1,5 +1,5 @@
 using JuMP, Gurobi
-using CSV, DataFrames, DataFramesMeta
+using CSV, DataFrames
 
 df = CSV.read("../data/data-stacked.csv")
 
@@ -9,9 +9,10 @@ function inv_cov(df::DataFrame)::Matrix{Float64}
 end
 
 # for calculating the distance
-function match_dist(trt::Integer, ctrl::Integer, S::Matrix, df::DataFrame, wsdict::Dict)::Float64
+function match_dist(trt::Integer, ctrl::Integer, S::Matrix, df::DataFrame, wsdict::Dict, datadict::Dict)::Float64
+    LARGE_VAL = 1e14
     if trt == ctrl
-        return Inf
+        return LARGE_VAL
     end
     
     wave = get(wsdict, trt, -2)
@@ -22,30 +23,25 @@ function match_dist(trt::Integer, ctrl::Integer, S::Matrix, df::DataFrame, wsdic
 
     # if control is already treated
     if cwave != -1 && cwave <= wave
-        return Inf
+        return LARGE_VAL
     end
 
-    trow = @where(df, :HHIDPN .== trt, :W .== wave)
-    crow = @where(df, :HHIDPN .== ctrl, :W .== wave)
+    trow::Union{Nothing,Vector{Float64}} = datadict[(trt,wave)]
+    crow::Union{Nothing,Vector{Float64}} = datadict[(ctrl,wave)]
 
-    numtrt = nrow(trow)
-    numctrl = nrow(crow)
-
-    (numtrt <= 1) && (numctrl <= 1) || error("$numtrt, $numctrl, $trt, $ctrl, $wave")
-
-    if numctrl == 0 || numtrt == 0
-        return Inf
+    if trow == nothing || crow == nothing
+        return LARGE_VAL
     end
-    t = Vector(trow[1,:][Not([:HHIDPN, :FIRST_WS, :W])])
-    c = Vector(crow[1,:][Not([:HHIDPN, :FIRST_WS, :W])])
-    d = t - c
+    d::Vector{Float64} = trow - crow
 
     return d' * S * d
 end
 
 S = inv_cov(df)
 wsdict = Dict(r[:HHIDPN] => r[:FIRST_WS] for r in eachrow(unique(df[:,[:HHIDPN, :FIRST_WS]])))
-match_dist(45943010, 57894020, S, df, wsdict)
+datadict = Dict( (r[:HHIDPN], r[:W])::Tuple{Int64,Int64} => Vector(r[Not([:HHIDPN, :FIRST_WS, :W])])::Vector{Float64} for r in eachrow(df) )
+
+@benchmark match_dist(45943010, 57894020, S, df, wsdict,datadict)
 
 treated = [ i for i in keys(wsdict) if wsdict[i] != -1 ]
 control = keys(wsdict)
@@ -66,7 +62,7 @@ function matching(treated,control,distance,numsets)
     #There are a total of S sets
     @constraint(m, sum(f[i,j] for i in treated, j in control) >= numsets)
 
-    @objective(m, Min, sum(f[i,j]* distance(i,j,S,df,wsdict) for i in treated, j in control ))
+    @objective(m, Min, sum(f[i,j]* distance(i,j,S,df,wsdict,datadict) for i in treated, j in control ))
 
     optimize!(m)
 
@@ -75,6 +71,4 @@ function matching(treated,control,distance,numsets)
     return assignment
 end
 
-matching(treated, control, match_dist, 10)
-
-dists = [ match_dist(i,j,S,df,wsdict) for i in treated, j in control];
+# matching(treated, control, match_dist, 10)
