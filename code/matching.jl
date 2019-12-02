@@ -41,6 +41,10 @@ S = inv_cov(df)
 wsdict = Dict(r[:HHIDPN] => r[:FIRST_WS] for r in eachrow(unique(df[:,[:HHIDPN, :FIRST_WS]])))
 datadict = Dict( (r[:HHIDPN], r[:W])::Tuple{Int64,Int64} => Vector(r[Not([:HHIDPN, :FIRST_WS, :W])])::Vector{Float64} for r in eachrow(df) )
 
+# count the number of matchable treated subjects
+
+count = sum([(t,wsdict[t]) in keys(datadict) for t in treated])
+
 # @benchmark match_dist(45943010, 57894020, S, df, wsdict,datadict)
 
 treated = [ i for i in keys(wsdict) if wsdict[i] != -1 ]
@@ -87,4 +91,5 @@ function matching(treated,control,distance,numsets)
     return matched_sets(treated,control,assignment)
 end
 
-match = matching(treated,control,match_dist,850)
+match = matching(treated,control,match_dist,count)
+
