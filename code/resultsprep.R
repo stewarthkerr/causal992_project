@@ -51,7 +51,7 @@ results_final = mutate(results_final, treated = ifelse(origin == 1, 1, 0)) %>%
 #Join the covariates
 results_final = left_join(results_final, df_stacked,
                           by = c("HHIDPN" = "HHIDPN", "cov_wave" = "W")) %>%
-  select(-X, -FIRST_WS)
+  select(-X)
 
 #Save the results
 write.csv(results_final,'../data/results-final.csv')
