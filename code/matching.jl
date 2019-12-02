@@ -91,5 +91,5 @@ function matching(treated,control,distance,numsets)
     return matched_sets(treated,control,assignment)
 end
 
-match = matching(treated,control,match_dist,count)
-CSV.write("../data/matched-pairs.csv", DataFrame(match), writeheader=false)
+# match = matching(treated,control,match_dist,count)
+# CSV.write("../data/matched-pairs.csv", DataFrame(match), writeheader=false)
