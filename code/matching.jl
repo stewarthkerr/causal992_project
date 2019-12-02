@@ -9,7 +9,7 @@ function inv_cov(df::DataFrame)::Matrix{Float64}
 end
 
 # for calculating the distance
-function match_dist(trt::Integer, ctrl::Integer, S::Matrix, df::DataFrame, wsdict::Dict, datadict::Dict)::Float64
+function match_dist(trt::Int64, ctrl::Int64, S::Matrix{Float64}, df::DataFrame, wsdict::Dict, datadict::Dict)::Float64
     LARGE_VAL = 1e14
     if trt == ctrl
         return LARGE_VAL
@@ -26,8 +26,8 @@ function match_dist(trt::Integer, ctrl::Integer, S::Matrix, df::DataFrame, wsdic
         return LARGE_VAL
     end
 
-    trow::Union{Nothing,Vector{Float64}} = datadict[(trt,wave)]
-    crow::Union{Nothing,Vector{Float64}} = datadict[(ctrl,wave)]
+    trow::Union{Nothing,Vector{Float64}} = get(datadict, (trt,wave)::Tuple, nothing)
+    crow::Union{Nothing,Vector{Float64}} = get(datadict, (ctrl,wave)::Tuple, nothing)
 
     if trow == nothing || crow == nothing
         return LARGE_VAL
@@ -41,10 +41,22 @@ S = inv_cov(df)
 wsdict = Dict(r[:HHIDPN] => r[:FIRST_WS] for r in eachrow(unique(df[:,[:HHIDPN, :FIRST_WS]])))
 datadict = Dict( (r[:HHIDPN], r[:W])::Tuple{Int64,Int64} => Vector(r[Not([:HHIDPN, :FIRST_WS, :W])])::Vector{Float64} for r in eachrow(df) )
 
-@benchmark match_dist(45943010, 57894020, S, df, wsdict,datadict)
+# @benchmark match_dist(45943010, 57894020, S, df, wsdict,datadict)
 
 treated = [ i for i in keys(wsdict) if wsdict[i] != -1 ]
-control = keys(wsdict)
+control = collect(keys(wsdict))
+
+function matched_sets(treated, control, amat::Matrix)
+    set = Vector{Tuple{Int64,Int64}}(undef, 0)
+    for i in 1:length(treated)
+        for j in 1:length(control)
+            if amat[i,j] != 0.
+                push!(set, (treated[i],control[j]))
+            end
+        end
+    end
+    set
+end
 
 function matching(treated,control,distance,numsets)
     #Define match Model
@@ -68,7 +80,5 @@ function matching(treated,control,distance,numsets)
 
     assignment = [ (JuMP.value(f[i,j])) for i in treated, j in control ]
 
-    return assignment
+    return matched_sets(treated,control,assignment)
 end
-
-# matching(treated, control, match_dist, 10)
