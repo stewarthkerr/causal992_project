@@ -82,15 +82,20 @@ function main()
     #Below for windows
     #df = CSV.read("..\\data\\data-stacked.csv")
 
+    #Create covariance matrix and dictionaries
     S = inv_cov(df)
     wsdict = Dict(r[:HHIDPN] => r[:FIRST_WS] for r in eachrow(unique(df[:,[:HHIDPN, :FIRST_WS]])))
     datadict = Dict( (r[:HHIDPN], r[:W])::Tuple{Int64,Int64} => Vector(r[Not([:HHIDPN, :FIRST_WS, :W])])::Vector{Float64} for r in eachrow(df) )
-    
+
+    #Determine who were treated. All are in control
     treated = [ i for i in keys(wsdict) if wsdict[i] != -1 ]
     control = collect(keys(wsdict))
 
-    #869 is the maximum number of matches we can have
-    match = matching(treated,control,match_dist,869)
+    #Get number of possible matchable treated subjects
+    count = sum([(t,wsdict[t]) in keys(datadict) for t in treated])
+
+    #Perform the match
+    match = matching(treated,control,match_dist,count)
 
     #CSV.write("../data/matched-sets.csv", DataFrame(match), writeheader=false)
     #Below for windows
