@@ -47,6 +47,7 @@ function matched_sets(treated, control, amat::Matrix)
     return set
 end
 
+#We should really pass wsdict, datadict, df, S to this function
 function matching(treated,control,distance,numsets)
     #Define match Model
     m = Model(with_optimizer(Gurobi.Optimizer, Presolve=0, OutputFlag=1))
@@ -76,11 +77,13 @@ function matching(treated,control,distance,numsets)
     return matched_sets(treated,control,assignment)
 end
 
+#This is so it doesn't run automatically when we include
 function main()
     LARGE_VAL = 1e14
     df = CSV.read("../data/data-stacked.csv")
     #Below for windows
     #df = CSV.read("..\\data\\data-stacked.csv")
+    #df = CSV.read("C:\\Users\\Stewart\\Documents\\2019fall\\STAT992\\project\\data\\data-stacked.csv")
 
     #Create covariance matrix and dictionaries
     S = inv_cov(df)
@@ -102,3 +105,6 @@ function main()
     #CSV.write("..\\data\\matched-sets.csv", DataFrame(match), writeheader=false)
     return match
 end
+
+#Uncomment below line to run the match
+#match = main()
