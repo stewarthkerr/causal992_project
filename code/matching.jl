@@ -1,8 +1,5 @@
 using JuMP, Gurobi
-using CSV, DataFrames, DataFramesMeta
-
-#df = CSV.read("../data/data-stacked.csv")
-#distance = CSV.read("../data/distance-matrix.csv")
+using CSV, DataFrames
 
 function inv_cov(df::DataFrame)::Matrix{Float64}
     mat = Matrix(df[:, Not([:HHIDPN, :FIRST_WS, :W])])
@@ -10,9 +7,9 @@ function inv_cov(df::DataFrame)::Matrix{Float64}
 end
 
 # for calculating the distance
-function match_dist(trt::Integer, ctrl::Integer, S::Matrix, df::DataFrame, wsdict::Dict)::Float64
+function match_dist(trt::Int64, ctrl::Int64, S::Matrix{Float64}, df::DataFrame, wsdict::Dict, datadict::Dict, LARGE_VAL::Float64)::Float64
     if trt == ctrl
-        return 1e14
+        return LARGE_VAL
     end
     
     wave = get(wsdict, trt, -2)
@@ -23,35 +20,35 @@ function match_dist(trt::Integer, ctrl::Integer, S::Matrix, df::DataFrame, wsdic
 
     # if control is already treated
     if cwave != -1 && cwave <= wave
-        return 1e14
+        return LARGE_VAL
     end
 
-    trow = @where(df, :HHIDPN .== trt, :W .== wave)
-    crow = @where(df, :HHIDPN .== ctrl, :W .== wave)
+    trow::Union{Nothing,Vector{Float64}} = get(datadict, (trt,wave)::Tuple, nothing)
+    crow::Union{Nothing,Vector{Float64}} = get(datadict, (ctrl,wave)::Tuple, nothing)
 
-    numtrt = nrow(trow)
-    numctrl = nrow(crow)
-
-    (numtrt <= 1) && (numctrl <= 1) || error("$numtrt, $numctrl, $trt, $ctrl, $wave")
-
-    if numctrl == 0 || numtrt == 0
-        return 1e14
+    if trow == nothing || crow == nothing
+        return LARGE_VAL
     end
-    t = Vector(trow[1,:][Not([:HHIDPN, :FIRST_WS, :W])])
-    c = Vector(crow[1,:][Not([:HHIDPN, :FIRST_WS, :W])])
-    d = t - c
+    d::Vector{Float64} = trow - crow
 
     return d' * S * d
 end
 
-#S = inv_cov(df)
-#wsdict = Dict(r[:HHIDPN] => r[:FIRST_WS] for r in eachrow(unique(df[:,[:HHIDPN, :FIRST_WS]])))
-#match_dist(45943010, 57894020, S, df, wsdict)
+function matched_sets(treated, control, amat::Matrix)
+    set = Vector{Tuple{Int64,Int64}}(undef, 0)
+    for i in 1:length(treated)
+        for j in 1:length(control)
+            if amat[i,j] != 0.
+                push!(set, (treated[i],control[j]))
+            end
+        end
+    end
 
-#treated = [ i for i in keys(wsdict) if wsdict[i] != -1 ]
-#control = [ i for i in keys(wsdict)]
+    return set
+end
 
-function matching(treated,control,distance,numsets,wsdict)
+#We should really pass wsdict, datadict, df, S to this function
+function matching(treated,control,distance,numsets)
     #Define match Model
     m = Model(with_optimizer(Gurobi.Optimizer, Presolve=0, OutputFlag=1))
     #Below variable takes 1 if edge exists, 0 if edge does not
@@ -62,20 +59,25 @@ function matching(treated,control,distance,numsets,wsdict)
     @constraint(m, a2[i in treated], sum(f[i,j] for j in control) <= 1 )
 
     # Each person is not matched to themself
-    @constraint(m, sum(f[i,i] for i in treated) <= 0)
+    #@constraint(m, sum(x[i,i] for i in treated) <= 0)
 
     #There are a total of S sets
     @constraint(m, sum(f[i,j] for i in treated, j in control) >= numsets)
 
-    @objective(m, Min, sum(f[i,j] * distance(i,j,S,df,wsdict) for i in treated, j in control ))
+    @objective(m, Min, sum(f[i,j]* distance(i,j,S,df,wsdict,datadict) for i in treated, j in control ))
 
     optimize!(m)
 
+    val = objective_value(m)
+
+    val < LARGE_VAL || error("infeasible")
+
     assignment = [ (JuMP.value(f[i,j])) for i in treated, j in control ]
 
-    return assignment
+    return matched_sets(treated,control,assignment)
 end
 
+#=
 function matchingWithDist(df,distance,numsets)
     wsdict = Dict(r[:HHIDPN] => r[:FIRST_WS] for r in eachrow(unique(df[:,[:HHIDPN, :FIRST_WS]])))
     treated_keys = [ i for i in keys(wsdict) if wsdict[i] != -1 ]
@@ -108,7 +110,6 @@ function matchingWithDist(df,distance,numsets)
     return assignment
 end
 
-#=
 function matchingExample()
     #Vector of treated individuals
     treated = collect(1:10)
@@ -139,3 +140,35 @@ function createDistMatrix(treated,control,DIST)
         global trt_iter = trt_iter + 1
     end  
 end
+
+#This is so it doesn't run automatically when we include
+function main()
+    LARGE_VAL = 1e14
+    df = CSV.read("../data/data-stacked.csv")
+    #Below for windows
+    #df = CSV.read("..\\data\\data-stacked.csv")
+    #df = CSV.read("C:\\Users\\Stewart\\Documents\\2019fall\\STAT992\\project\\data\\data-stacked.csv")
+
+    #Create covariance matrix and dictionaries
+    S = inv_cov(df)
+    wsdict = Dict(r[:HHIDPN] => r[:FIRST_WS] for r in eachrow(unique(df[:,[:HHIDPN, :FIRST_WS]])))
+    datadict = Dict( (r[:HHIDPN], r[:W])::Tuple{Int64,Int64} => Vector(r[Not([:HHIDPN, :FIRST_WS, :W])])::Vector{Float64} for r in eachrow(df) )
+
+    #Determine who were treated. All are in control
+    treated = [ i for i in keys(wsdict) if wsdict[i] != -1 ]
+    control = collect(keys(wsdict))
+
+    #Get number of possible matchable treated subjects
+    count = sum([(t,wsdict[t]) in keys(datadict) for t in treated])
+
+    #Perform the match
+    match = matching(treated,control,match_dist,count)
+
+    #CSV.write("../data/matched-sets.csv", DataFrame(match), writeheader=false)
+    #Below for windows
+    #CSV.write("..\\data\\matched-sets.csv", DataFrame(match), writeheader=false)
+    return match
+end
+
+#Uncomment below line to run the match
+#match = main()
