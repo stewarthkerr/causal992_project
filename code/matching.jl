@@ -1,6 +1,7 @@
 using JuMP, Gurobi
 using CSV, DataFrames
 
+LARGE_VAL = 1e14
 df = CSV.read("../data/data-stacked.csv")
 
 function inv_cov(df::DataFrame)::Matrix{Float64}
@@ -10,7 +11,6 @@ end
 
 # for calculating the distance
 function match_dist(trt::Int64, ctrl::Int64, S::Matrix{Float64}, df::DataFrame, wsdict::Dict, datadict::Dict)::Float64
-    LARGE_VAL = 1e14
     if trt == ctrl
         return LARGE_VAL
     end
@@ -78,7 +78,13 @@ function matching(treated,control,distance,numsets)
 
     optimize!(m)
 
+    val = objective_value(m)
+
+    val < LARGE_VAL || error("infeasible")
+
     assignment = [ (JuMP.value(f[i,j])) for i in treated, j in control ]
 
     return matched_sets(treated,control,assignment)
 end
+
+match = matching(treated,control,match_dist,850)
