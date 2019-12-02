@@ -1,16 +1,13 @@
 using JuMP, Gurobi
 using CSV, DataFrames
 
-LARGE_VAL = 1e14
-df = CSV.read("../data/data-stacked.csv")
-
 function inv_cov(df::DataFrame)::Matrix{Float64}
     mat = Matrix(df[:, Not([:HHIDPN, :FIRST_WS, :W])])
     inv(mat' * mat)
 end
 
 # for calculating the distance
-function match_dist(trt::Int64, ctrl::Int64, S::Matrix{Float64}, df::DataFrame, wsdict::Dict, datadict::Dict)::Float64
+function match_dist(trt::Int64, ctrl::Int64, S::Matrix{Float64}, df::DataFrame, wsdict::Dict, datadict::Dict, LARGE_VAL::Float64)::Float64
     if trt == ctrl
         return LARGE_VAL
     end
@@ -37,15 +34,6 @@ function match_dist(trt::Int64, ctrl::Int64, S::Matrix{Float64}, df::DataFrame, 
     return d' * S * d
 end
 
-S = inv_cov(df)
-wsdict = Dict(r[:HHIDPN] => r[:FIRST_WS] for r in eachrow(unique(df[:,[:HHIDPN, :FIRST_WS]])))
-datadict = Dict( (r[:HHIDPN], r[:W])::Tuple{Int64,Int64} => Vector(r[Not([:HHIDPN, :FIRST_WS, :W])])::Vector{Float64} for r in eachrow(df) )
-
-# @benchmark match_dist(45943010, 57894020, S, df, wsdict,datadict)
-
-treated = [ i for i in keys(wsdict) if wsdict[i] != -1 ]
-control = collect(keys(wsdict))
-
 function matched_sets(treated, control, amat::Matrix)
     set = Vector{Tuple{Int64,Int64}}(undef, 0)
     for i in 1:length(treated)
@@ -55,7 +43,8 @@ function matched_sets(treated, control, amat::Matrix)
             end
         end
     end
-    set
+
+    return set
 end
 
 function matching(treated,control,distance,numsets)
@@ -69,7 +58,7 @@ function matching(treated,control,distance,numsets)
     @constraint(m, a2[i in treated], sum(f[i,j] for j in control) <= 1 )
 
     # Each person is not matched to themself
-    #@constraint(m, sum(x[i,i] for i in treated, i in control) <= 0)
+    #@constraint(m, sum(x[i,i] for i in treated) <= 0)
 
     #There are a total of S sets
     @constraint(m, sum(f[i,j] for i in treated, j in control) >= numsets)
@@ -87,4 +76,24 @@ function matching(treated,control,distance,numsets)
     return matched_sets(treated,control,assignment)
 end
 
-match = matching(treated,control,match_dist,850)
+function main()
+    LARGE_VAL = 1e14
+    df = CSV.read("../data/data-stacked.csv")
+    #Below for windows
+    #df = CSV.read("..\\data\\data-stacked.csv")
+
+    S = inv_cov(df)
+    wsdict = Dict(r[:HHIDPN] => r[:FIRST_WS] for r in eachrow(unique(df[:,[:HHIDPN, :FIRST_WS]])))
+    datadict = Dict( (r[:HHIDPN], r[:W])::Tuple{Int64,Int64} => Vector(r[Not([:HHIDPN, :FIRST_WS, :W])])::Vector{Float64} for r in eachrow(df) )
+    
+    treated = [ i for i in keys(wsdict) if wsdict[i] != -1 ]
+    control = collect(keys(wsdict))
+
+    #869 is the maximum number of matches we can have
+    match = matching(treated,control,match_dist,869)
+
+    #CSV.write("../data/matched-sets.csv", DataFrame(match), writeheader=false)
+    #Below for windows
+    #CSV.write("..\\data\\matched-sets.csv", DataFrame(match), writeheader=false)
+    return match
+end
