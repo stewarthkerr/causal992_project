@@ -55,3 +55,11 @@ results_final = left_join(results_final, df_stacked,
 
 #Save the results
 write.csv(results_final,'../data/results-final.csv')
+
+
+#Create a dataset to check balance
+bl.cols = colnames(df_stacked)
+bl.cols = bl.cols[c(2,4:5,16:30)]
+initial_balance = unique(df_stacked[bl.cols])
+write.csv(initial_balance,'../data/initial-balance.csv', row.names = FALSE)
+
