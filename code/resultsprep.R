@@ -8,8 +8,8 @@ matched_pairs$pair_ID = seq.int(nrow(matched_pairs))
 matched_pairs = left_join(matched_pairs, 
                           unique(df_stacked[c("HHIDPN","FIRST_WS")]),
                           by = c("treated" = "HHIDPN")) %>%
-  rename(cov_wave = FIRST_WS) 
-matched_pairs$cov_wave = (matched_pairs$cov_wave - 1)
+  rename(treated_wave = FIRST_WS) 
+matched_pairs$cov_wave = (matched_pairs$treated_wave - 1)
 
 #Create outcome variable
 matched_pairs = left_join(matched_pairs,
@@ -42,16 +42,16 @@ results_final = bind_rows(matched_pairs, matched_pairs, .id = "origin") %>%
       origin == 2 & outcome == 0 ~ 0
     )
   ) %>%
-  select(HHIDPN, origin, pair_ID, cov_wave, outcome)
+  select(HHIDPN, origin, pair_ID, cov_wave, treated_wave, outcome)
 
 #Create the treatment indicator
 results_final = mutate(results_final, treated = ifelse(origin == 1, 1, 0)) %>%
-  select(HHIDPN, pair_ID, treated, outcome, cov_wave)
+  select(HHIDPN, pair_ID, treated, outcome, cov_wave, treated_wave)
 
 #Join the covariates
 results_final = left_join(results_final, df_stacked,
-                          by = c("HHIDPN" = "HHIDPN", "cov_wave" = "W")) %>%
-  select(-X)
+                          by = c("HHIDPN" = "HHIDPN", "treated_wave" = "W")) %>%
+  select(-X, -treated_wave)
 
 #Save the results
 write.csv(results_final,'../data/results-final.csv')

@@ -31,16 +31,16 @@ for (wave in 2:12){
   }
 } 
 
-## Convert unordered columns to dummy_cols
+## Convert unordered columns to dummy_cols and remove RADYEAR
 df_stacked = dummy_cols(df_stacked, 
                      select_columns = c("RAGENDER","RACE_ETHN","RMSTAT","RLBRF"), 
                      remove_most_frequent_dummy = TRUE) %>%
-  select(-RAGENDER,-RACE_ETHN,-RMSTAT,-RLBRF)
+  select(-RAGENDER,-RACE_ETHN,-RMSTAT,-RLBRF, -RADYEAR)
 
 ## Convert the rest of the columns into numeric
 df_stacked = sapply(df_stacked, as.numeric) #Converts all factors to their numeric level
 
 ## Save the data
-write.csv(df_stacked,'../data/data-stacked.csv')
+write.csv(df_stacked,'../data/data-stacked.csv', row.names = FALSE)
 
 

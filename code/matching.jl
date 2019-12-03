@@ -26,8 +26,8 @@ function match_dist(trt::Int64, ctrl::Int64, S::Matrix{Float64}, df::DataFrame, 
         return LARGE_VAL
     end
 
-    trow::Union{Nothing,Vector{Float64}} = get(datadict, (trt,wave-1)::Tuple, nothing)
-    crow::Union{Nothing,Vector{Float64}} = get(datadict, (ctrl,wave-1)::Tuple, nothing)
+    trow::Union{Nothing,Vector{Float64}} = get(datadict, (trt,wave)::Tuple, nothing)
+    crow::Union{Nothing,Vector{Float64}} = get(datadict, (ctrl,wave)::Tuple, nothing)
 
     if trow == nothing || crow == nothing
         return LARGE_VAL
@@ -43,12 +43,12 @@ datadict = Dict( (r[:HHIDPN], r[:W])::Tuple{Int64,Int64} => Vector(r[Not([:HHIDP
 
 # count the number of matchable treated subjects
 
-count = sum([(t,wsdict[t]-1) in keys(datadict) for t in treated])
-
 # @benchmark match_dist(45943010, 57894020, S, df, wsdict,datadict)
 
 treated = [ i for i in keys(wsdict) if wsdict[i] != -1 ]
 control = collect(keys(wsdict))
+
+count = sum([(t,wsdict[t]) in keys(datadict) for t in treated])
 
 function matched_sets(treated, control, amat::Matrix)
     set = Vector{Tuple{Int64,Int64}}(undef, 0)
@@ -64,7 +64,7 @@ end
 
 function matching(treated,control,distance,numsets)
     #Define match Model
-    m = Model(with_optimizer(Gurobi.Optimizer, Presolve=0, OutputFlag=1))
+    m = Model(with_optimizer(Gurobi.Optimizer, Presolve=0, OutputFlag=1, NodefileStart=0.5))
     #Below variable takes 1 if edge exists, 0 if edge does not
     @variable(m, f[treated,control], Bin)
 
@@ -91,5 +91,5 @@ function matching(treated,control,distance,numsets)
     return matched_sets(treated,control,assignment)
 end
 
-# match = matching(treated,control,match_dist,count)
+#match = matching(treated,control,match_dist,count)
 # CSV.write("../data/matched-pairs.csv", DataFrame(match), writeheader=false)

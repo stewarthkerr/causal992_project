@@ -37,8 +37,8 @@ data.upto = function(df, W) {
   ## Remove people with negative wealth to start with
   df = df[!(df$BASELINE_POVERTY),]
   
-  ## Remove people that have already died
-  df = df[!(df$DeathWave < W),]
+  ## Remove people that have already died or had a negative wealth to start with
+  #df = dplyr::filter(df, is.na(DeathWave) || DeathWave >= W, !is.na(BASELINE_POVERTY) && BASELINE_POVERTY == 0)
   
   ## construct WS before indicator
   #wsinds = paste0("WS", 2:max(2,(n-1)))
