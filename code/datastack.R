@@ -35,7 +35,7 @@ for (wave in 2:12){
 df_stacked = dummy_cols(df_stacked, 
                      select_columns = c("RAGENDER","RACE_ETHN","RMSTAT","RLBRF"), 
                      remove_most_frequent_dummy = TRUE) %>%
-  select(-RAGENDER,-RACE_ETHN,-RMSTAT,-RLBRF, -RADYEAR)
+  select(-RAGENDER,-RACE_ETHN,-RMSTAT,-RLBRF)
 
 ## Convert the rest of the columns into numeric
 df_stacked = sapply(df_stacked, as.numeric) #Converts all factors to their numeric level
