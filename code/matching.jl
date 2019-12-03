@@ -26,8 +26,8 @@ function match_dist(trt::Int64, ctrl::Int64, S::Matrix{Float64}, df::DataFrame, 
         return LARGE_VAL
     end
 
-    trow::Union{Nothing,Vector{Float64}} = get(datadict, (trt,wave-1)::Tuple, nothing)
-    crow::Union{Nothing,Vector{Float64}} = get(datadict, (ctrl,wave-1)::Tuple, nothing)
+    trow::Union{Nothing,Vector{Float64}} = get(datadict, (trt,wave)::Tuple, nothing)
+    crow::Union{Nothing,Vector{Float64}} = get(datadict, (ctrl,wave)::Tuple, nothing)
 
     if trow == nothing || crow == nothing
         return LARGE_VAL
@@ -41,14 +41,14 @@ S = inv_cov(df)
 wsdict = Dict(r[:HHIDPN] => r[:FIRST_WS] for r in eachrow(unique(df[:,[:HHIDPN, :FIRST_WS]])))
 datadict = Dict( (r[:HHIDPN], r[:W])::Tuple{Int64,Int64} => Vector(r[Not([:HHIDPN, :FIRST_WS, :W])])::Vector{Float64} for r in eachrow(df) )
 
-# count the number of matchable treated subjects
-
-count = sum([(t,wsdict[t]-1) in keys(datadict) for t in treated])
-
 # @benchmark match_dist(45943010, 57894020, S, df, wsdict,datadict)
 
 treated = [ i for i in keys(wsdict) if wsdict[i] != -1 ]
 control = collect(keys(wsdict))
+
+# count the number of matchable treated subjects
+count = sum([(t,wsdict[t]) in keys(datadict) for t in treated])
+
 
 function matched_sets(treated, control, amat::Matrix)
     set = Vector{Tuple{Int64,Int64}}(undef, 0)
