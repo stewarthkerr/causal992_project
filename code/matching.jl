@@ -64,7 +64,7 @@ end
 
 function matching(treated,control,distance,numsets)
     #Define match Model
-    m = Model(with_optimizer(Gurobi.Optimizer, Presolve=0, OutputFlag=1))
+    m = Model(with_optimizer(Gurobi.Optimizer, Presolve=0, OutputFlag=1, NodefileStart=0.5))
     #Below variable takes 1 if edge exists, 0 if edge does not
     @variable(m, f[treated,control], Bin)
 
@@ -91,5 +91,5 @@ function matching(treated,control,distance,numsets)
     return matched_sets(treated,control,assignment)
 end
 
-# match = matching(treated,control,match_dist,count)
+#match = matching(treated,control,match_dist,count)
 # CSV.write("../data/matched-pairs.csv", DataFrame(match), writeheader=false)
