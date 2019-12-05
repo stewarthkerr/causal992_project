@@ -6,7 +6,6 @@ Does experiencing a large wealth shock, defined as the loss of 75% or more of yo
 Data for the project comes from the most recent version of the University of Michigan's HRS study. We used the RAND edited version of the data. Mirroring the JAMA study, we included individuals from the first HRS wave, born between 1931 and 1941 and first interviewed in 1992, for our analysis. Within the data subdirectory, `dataprep.R` was run to subset this HRS cohort, producing the file `data/data-subset.csv`. The code `datacleaning.R` was then run to clean the data (`data/data-cleaned.csv`), removing people with missing data and combining covariates to match the JAMA study. Note that covariates were lagged by 1 time period so that they proceded treatment.
 
 ### Structure of cleaned data
-#### Variables
 Below lowercase `w` is placeholder for wave, which ranges between 1 (1992) and 12 (2016) varying 2 years between each wave.
 
 * Variables of interest
@@ -46,7 +45,10 @@ Below lowercase `w` is placeholder for wave, which ranges between 1 (1992) and 1
   * `RwMLTMORB` (multimorbidity, *constructed*)
   * `RwLIMADL` (w in 2:12, limitations in ADL, *constructed*)
 
-## Functions
+## Code
+All of the code used for our analysis exists in the `code/` subdirectory.
 * `helpers.R` contains the functions we used for data processing and analysis
   * `data.upto`: This function subsets the data-cleaned dataframe to contain only individuals that were observed in a particular year.
+* `matching.jl` contains the code used to perform the risk-set balanced matching.
+* `resultsprep.R` prepares the matched pairs produced by `matching.jl` for analysis of treatment effect, balance, and sensitivity
   
