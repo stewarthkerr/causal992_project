@@ -1,3 +1,5 @@
+## This is the script for cleaning the subsetting data.  The result is
+## saved in data/data-cleaned.csv.  
 df = read.csv('../data/data-subset.csv')
 
 #Load functions
@@ -67,4 +69,4 @@ narate = sort(unlist(purrr::map(df, function(x) mean(is.na(x)))), decreasing = T
 head(narate, n = 50)
 
 ## Save data as 
-df = write.csv(df,'../data/data-cleaned.csv')
+df = write.csv(df,'../data/data-cleaned.csv', row.names = FALSE)

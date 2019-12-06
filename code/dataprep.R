@@ -53,8 +53,4 @@ tv_covariates <- c(sprintf("R%dIEARN",1:12), sprintf("R%dMSTAT",1:12),
 #Subset the df
 df <- select(df, bl_covariates, tv_covariates)
 
-write.csv(df, "../data/data-subset.csv")
-
-
-## #Create dummy columns
-## final <- dummy_cols(df)
+write.csv(df, "../data/data-subset.csv", row.names = FALSE)

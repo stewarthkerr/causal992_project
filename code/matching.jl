@@ -1,55 +1,62 @@
 using JuMP, Gurobi
 using CSV, DataFrames
 
-LARGE_VAL = 1e14
-df = CSV.read("../data/data-stacked.csv")
-
 function inv_cov(df::DataFrame)::Matrix{Float64}
     mat = Matrix(df[:, Not([:HHIDPN, :FIRST_WS, :W])])
-    inv(mat' * mat)
+    return inv(mat' * mat)
 end
 
-# for calculating the distance
-function match_dist(trt::Int64, ctrl::Int64, S::Matrix{Float64}, df::DataFrame, wsdict::Dict, datadict::Dict)::Float64
+"""
+Calculates the Mahalanobis distance between a treated and potential control
+- `trt` The ID of the treated individual
+- `ctrl` The ID of the potential control
+- `S` Inverse covariance matrix, calculated via inv_cov function
+- `df` DataFrame
+- `wsdict` Dictionary of first wage shock (treatment) for each person. Takes -1 if they never experienced treatment
+- `datadict` Dictionary of data
+- `LARGE_DIST` Distance that indicates the match is impossible
+"""
+function pairwise_mahalanobis(trt::Int64, ctrl::Int64, S::Matrix{Float64}, df::DataFrame, wsdict::Dict, datadict::Dict; LARGE_DIST ::Float64 = 1e14)::Float64
+    #If someone would be matched to themselves, return large distance
     if trt == ctrl
-        return LARGE_VAL
+        return LARGE_DIST
     end
     
+    #Else, get the wave that the treated experienced treatment
     wave = get(wsdict, trt, -2)
     wave != -2 || error("trt not found")
 
+    #See if the control was ever treated
     cwave = get(wsdict, ctrl, -2)
     cwave != -2 || error("ctrl not found")
 
-    # if control is already treated
+    # if control is already treated, we cannot match
     if cwave != -1 && cwave <= wave
-        return LARGE_VAL
+        return LARGE_DIST
     end
 
+    #Get the covariates that the treated and control will match on
     trow::Union{Nothing,Vector{Float64}} = get(datadict, (trt,wave)::Tuple, nothing)
     crow::Union{Nothing,Vector{Float64}} = get(datadict, (ctrl,wave)::Tuple, nothing)
 
+    #If the treated/control don't have data (i.e. missing covariates), we cannot match.
     if trow == nothing || crow == nothing
-        return LARGE_VAL
+        return LARGE_DIST
     end
+
+    #Otherwise, this is a valid distance, calculate covariate distance
     d::Vector{Float64} = trow - crow
 
+    #Multiply by inverse of covariance matrix
     return d' * S * d
 end
 
-S = inv_cov(df)
-wsdict = Dict(r[:HHIDPN] => r[:FIRST_WS] for r in eachrow(unique(df[:,[:HHIDPN, :FIRST_WS]])))
-datadict = Dict( (r[:HHIDPN], r[:W])::Tuple{Int64,Int64} => Vector(r[Not([:HHIDPN, :FIRST_WS, :W])])::Vector{Float64} for r in eachrow(df) )
-
-# @benchmark match_dist(45943010, 57894020, S, df, wsdict,datadict)
-
-treated = [ i for i in keys(wsdict) if wsdict[i] != -1 ]
-control = collect(keys(wsdict))
-
-# count the number of matchable treated subjects
-count = sum([(t,wsdict[t]) in keys(datadict) for t in treated])
-
-
+"""
+Takes output from JuMP and makes a matrix of matches
+- `treated` Vector of IDs of treated pool
+- `control` Vector of IDs of match pool
+- `amat` Matrix of assignments of edges between treated and control
+"""
 function matched_sets(treated, control, amat::Matrix)
     set = Vector{Tuple{Int64,Int64}}(undef, 0)
     for i in 1:length(treated)
@@ -59,7 +66,8 @@ function matched_sets(treated, control, amat::Matrix)
             end
         end
     end
-    set
+
+    return set
 end
 
 function matching(treated,control,distance,numsets)
@@ -84,12 +92,29 @@ function matching(treated,control,distance,numsets)
 
     val = objective_value(m)
 
-    val < LARGE_VAL || error("infeasible")
+    val < LARGE_DIST || error("infeasible")
 
     assignment = [ (JuMP.value(f[i,j])) for i in treated, j in control ]
 
     return matched_sets(treated,control,assignment)
 end
 
-#match = matching(treated,control,match_dist,count)
-# CSV.write("../data/matched-pairs.csv", DataFrame(match), writeheader=false)
+function main()
+
+    LARGE_DIST = 1e14
+    df = CSV.read("../data/data-stacked.csv")
+    wsdict = Dict(r[:HHIDPN] => r[:FIRST_WS] for r in eachrow(unique(df[:,[:HHIDPN, :FIRST_WS]])))
+    datadict = Dict( (r[:HHIDPN], r[:W])::Tuple{Int64,Int64} => Vector(r[Not([:HHIDPN, :FIRST_WS, :W])])::Vector{Float64} for r in eachrow(df) )
+    treated = [ i for i in keys(wsdict) if wsdict[i] != -1 ]
+    control = collect(keys(wsdict))
+    S = inv_cov(df)
+
+    # count the number of matchable treated subjects
+    count = sum([(t,wsdict[t]) in keys(datadict) for t in treated])
+    
+    #Perform the matching and write to CSV
+    match = matching(treated,control,match_dist,count)
+    CSV.write("../data/matched-pairs.csv", DataFrame(match), writeheader=false)
+      
+end
+

@@ -1,3 +1,6 @@
+## This is the script for stacking the data to calculate Mahalanobis distance.
+## The result is saved in data/data-stacked.csv. 
+
 #Load cleaned data
 df = read.csv('../data/data-cleaned.csv')
 
@@ -35,7 +38,7 @@ for (wave in 2:12){
 df_stacked = dummy_cols(df_stacked, 
                      select_columns = c("RAGENDER","RACE_ETHN","RMSTAT","RLBRF"), 
                      remove_most_frequent_dummy = TRUE) %>%
-  select(-RAGENDER,-RACE_ETHN,-RMSTAT,-RLBRF)
+  select(-RAGENDER,-RACE_ETHN,-RMSTAT,-RLBRF,-RADYEAR)
 
 ## Convert the rest of the columns into numeric
 df_stacked = sapply(df_stacked, as.numeric) #Converts all factors to their numeric level
