@@ -63,7 +63,7 @@ results_final = left_join(results_final, df_stacked,
 results_final$RADYEAR = ifelse(results_final$RADYEAR == 3000, NA, results_final$RADYEAR)
 
 #Save the results
-write.csv(results_final,'../data/results-final.csv')
+write.csv(results_final,'../data/results-final.csv', row.names = FALSE)
 
 
 #Create a dataset to check balance
