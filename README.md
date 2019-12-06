@@ -47,8 +47,14 @@ Below lowercase `w` is placeholder for wave, which ranges between 1 (1992) and 1
 
 ## Code
 All of the code used for our analysis exists in the `code/` subdirectory.
+* `dataprep.R` subsets the RAND HRS data to contain only subjects from the first cohort.
+* `datacleaning.R` further subsets the data to remove individuals that began with negative assets or have missing data.
+* `datastack.R` processes the data for performed the matching using `matching.jl`.
 * `helpers.R` contains the functions we used for data processing and analysis
   * `data.upto`: This function subsets the data-cleaned dataframe to contain only individuals that were observed in a particular year.
 * `matching.jl` contains the code used to perform the risk-set balanced matching.
 * `resultsprep.R` prepares the matched pairs produced by `matching.jl` for analysis of treatment effect, balance, and sensitivity
+* `treatment_effect_analysis.Rmd` estimates the treatment effect used a paired t-test and IPW estimator.
+* `balance_analysis.Rmd` compares balance of baseline covariates before and after matching.
+* `sensitivity_analysis.Rmd` examines how sensitive our analysis is to unobserved confounders.
   
