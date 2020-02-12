@@ -137,6 +137,10 @@ function main()
     datadict = Dict( (r[:HHIDPN], r[:W])::Tuple{Int64,Int64} => Vector(r[Not([:HHIDPN, :FIRST_WS, :W])])::Vector{Float64} for r in eachrow(df))
     treated = [ i for i in keys(wsdict) if wsdict[i] != -1 ]
     control = collect(keys(wsdict))
+
+    #Build the balance matrix/dictionary on column #22 - gender
+    #Problem: Right now, some control don't have year 2 (but everyone should)
+    balancedict = Dict( (j,1) => datadict[j,2][22] for j in control)
     
     #Calculate the distance matrix as a dictionary
     S = inv_cov(df)
