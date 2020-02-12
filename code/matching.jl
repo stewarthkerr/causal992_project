@@ -59,36 +59,48 @@ end
 Uses JuMP to perform balanced risk set matching 
 - `treated`  Vector of IDs of treated pool
 - `control`  Vector of IDs of match pool
-- `distance` Function used to calculate distance between treated and control
+- `distance` Distance matrix dictionary of size (treated x control) with keys (treated ID, control ID)
+- `balance`  Balance matrix dictionary of size ((treated+control) x k) where k is the number of
+             covariates for which we desire exact match. Has keys (subject ID, k). Individual entries are 
+             values of binary covariates for that particular subject 
 - `numsets`  Number of matched pairs we want
 """
 function brs_matching(treated,control,distance,numsets)#; args...)
     #Define match Model
     m = Model(with_optimizer(Gurobi.Optimizer, Presolve=0, OutputFlag=1, NodefileStart=0.5))
     
+    ## Constants
+    #Penalty for imbalanced
+    lambda = sum(values(distance))
+
+    ## Variables
     #Below variable takes 1 if edge exists, 0 if edge does not
     @variable(m, f[treated,control], Bin)
+    #Below variable is the positive gap between treated and control for the kth covariate
+    @variable(m, pg[k] >= 0 )
+    #The negative gap between treated and control for the kth covariate
+    @variable(m, ng[k] >= 0)
 
+    ## Contraints
+    #There are a total of S sets
+    @constraint(m, sum(f[i,j] for i in treated, j in control) >= numsets)
     # Each person is in at most 1 set
     @constraint(m, a[j in control], sum(f[i,j] for i in treated) <= 1 )
     @constraint(m, a2[i in treated], sum(f[i,j] for j in control) <= 1 )
+    #Enforces perfect balance
+    @constraint(m, c[k in variables], ((sum(f[i,j]*balance[i,k]) - sum(f[i,j]*balance[j,k])) for i in treated, j in control) <= pg[k])
+    @constraint(m, c2[k in variables], ((sum(f[i,j]*balance[j,k]) - sum(f[i,j]*balance[i,k])) for i in treated, j in control) <= ng[k])
 
-    # Each person is not matched to themself
-    #@constraint(m, sum(x[i,i] for i in treated, i in control) <= 0)
-
-    #There are a total of S sets
-    @constraint(m, sum(f[i,j] for i in treated, j in control) >= numsets)
-
-    @objective(m, Min, sum(f[i,j] * distance(i,j,S,df,wsdict,datadict) for i in treated, j in control ))
-
+    ## Objective
+    @objective(m, Min, sum(f[i,j] * distance[i,j] for i in treated, j in control ))
     optimize!(m)
 
+    #Check if we actually found a solution
     val = objective_value(m)
+    val < LARGE_DIST || error("This matching is infeasible.")
 
-    val < LARGE_DIST || error("infeasible")
-
+    #Return Sx2 matrix of the IDs in the matched pair
     assignment = [ (JuMP.value(f[i,j])) for i in treated, j in control ]
-
     return matched_sets(treated,control,assignment)
 end
 
@@ -118,21 +130,22 @@ function main()
 
     #This allows us to read the data in 
     script_location = @__DIR__
-    df = CSV.read(string(script_location,"/../data/data-stacked.csv"))
+    df = CSV.read(string(script_location,"/../data/data-stacked-small.csv"))
 
     #Create dictionaries
     wsdict = Dict(r[:HHIDPN] => r[:FIRST_WS] for r in eachrow(unique(df[:,[:HHIDPN, :FIRST_WS]])))    
-    datadict = Dict( (r[:HHIDPN], r[:W])::Tuple{Int64,Int64} => Vector(r[Not([:HHIDPN, :FIRST_WS, :W])])::Vector{Float64} for r in eachrow(df) )
+    datadict = Dict( (r[:HHIDPN], r[:W])::Tuple{Int64,Int64} => Vector(r[Not([:HHIDPN, :FIRST_WS, :W])])::Vector{Float64} for r in eachrow(df))
     treated = [ i for i in keys(wsdict) if wsdict[i] != -1 ]
     control = collect(keys(wsdict))
-
-    # count the number of matchable treated subjects
-    count = sum([(t,wsdict[t]) in keys(datadict) for t in treated])
     
-    #Perform the matching and write to CSV
+    #Calculate the distance matrix as a dictionary
     S = inv_cov(df)
-    match = brs_matching(treated,control,pairwise_mahalanobis,count)
-    CSV.write("../data/matched-pairs.csv", DataFrame(match), writeheader=false)
+    distancedict = Dict( (i, j) => pairwise_mahalanobis(i, j, S, df, wsdict, datadict) for i in treated, j in control )
+
+    # Perform the matching for the maximum number of possible sets;
+    count = sum([(t,wsdict[t]) in keys(datadict) for t in treated])
+    match = brs_matching(treated,control,distancedict,count)
+    CSV.write("../data/matched-pairs-small.csv", DataFrame(match), writeheader=false)
       
 end
 
