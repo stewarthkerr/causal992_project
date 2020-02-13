@@ -57,29 +57,32 @@ end
 
 """
 Uses JuMP to perform balanced risk set matching 
-- `treated`  Vector of IDs of treated pool
-- `control`  Vector of IDs of match pool
 - `distance` Distance matrix dictionary of size (treated x control) with keys (treated ID, control ID)
 - `balance`  Balance matrix dictionary of size ((treated+control) x k) where k is the number of
              covariates for which we desire exact match. Has keys (subject ID, k). Individual entries are 
-             values of binary covariates for that particular subject 
+             values of the k binary covariates for that particular subject 
 - `numsets`  Number of matched pairs we want
 """
-function brs_matching(treated,control,distance,numsets)#; args...)
+function brs_matching(distance, balance, numsets)
     #Define match Model
     m = Model(with_optimizer(Gurobi.Optimizer, Presolve=0, OutputFlag=1, NodefileStart=0.5))
     
     ## Constants
+    #Vectors of treated & control individuals
+    treated = unique(first.(keys(distance)))
+    control = unique(last.(keys(distance)))
     #Penalty for imbalanced
     lambda = sum(values(distance))
+    #Vector of balance covariates
+    bcov = unique(last.(keys(balance)))
 
     ## Variables
     #Below variable takes 1 if edge exists, 0 if edge does not
     @variable(m, f[treated,control], Bin)
-    #Below variable is the positive gap between treated and control for the kth covariate
-    @variable(m, pg[k] >= 0 )
+    #Below variable is the positive gap between treated and control for the kth covariates
+    @variable(m, pg[bcov] >= 0 )
     #The negative gap between treated and control for the kth covariate
-    @variable(m, ng[k] >= 0)
+    @variable(m, ng[bcov] >= 0)
 
     ## Contraints
     #There are a total of S sets
@@ -88,11 +91,11 @@ function brs_matching(treated,control,distance,numsets)#; args...)
     @constraint(m, a[j in control], sum(f[i,j] for i in treated) <= 1 )
     @constraint(m, a2[i in treated], sum(f[i,j] for j in control) <= 1 )
     #Enforces perfect balance
-    @constraint(m, c[k in variables], ((sum(f[i,j]*balance[i,k]) - sum(f[i,j]*balance[j,k])) for i in treated, j in control) <= pg[k])
-    @constraint(m, c2[k in variables], ((sum(f[i,j]*balance[j,k]) - sum(f[i,j]*balance[i,k])) for i in treated, j in control) <= ng[k])
+    @constraint(m, c[k in bcov], (sum(f[i,j]*balance[i,k] - f[i,j]*balance[j,k] for i in treated, j in control))  <= pg[k])
+    @constraint(m, c2[k in bcov], (sum(f[i,j]*balance[j,k] - f[i,j]*balance[i,k] for i in treated, j in control)) <= ng[k])
 
     ## Objective
-    @objective(m, Min, sum(f[i,j] * distance[i,j] for i in treated, j in control ))
+    @objective(m, Min, sum(f[i,j] * distance[i,j] for i in treated, j in control) + sum(lambda*(pg[k]+ng[k]) for k in bcov))
     optimize!(m)
 
     #Check if we actually found a solution
@@ -138,9 +141,9 @@ function main()
     treated = [ i for i in keys(wsdict) if wsdict[i] != -1 ]
     control = collect(keys(wsdict))
 
-    #Build the balance matrix/dictionary on column #22 - gender
+    #Build the balance matrix/dictionary on column #23 - gender
     #Problem: Right now, some control don't have year 2 (but everyone should)
-    balancedict = Dict( (j,1) => datadict[j,2][22] for j in control)
+    balancedict = Dict( (j,1) => datadict[j,2][23] for j in control)
     
     #Calculate the distance matrix as a dictionary
     S = inv_cov(df)
@@ -148,8 +151,8 @@ function main()
 
     # Perform the matching for the maximum number of possible sets;
     count = sum([(t,wsdict[t]) in keys(datadict) for t in treated])
-    match = brs_matching(treated,control,distancedict,count)
-    CSV.write("../data/matched-pairs-small.csv", DataFrame(match), writeheader=false)
+    match = brs_matching(distancedict,balancedict,count)
+    CSV.write("../data/matched-pairs-small.csv", DataFrame(match), header = ["treated","control"])
       
 end
 
