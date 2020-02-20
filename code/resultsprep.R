@@ -2,9 +2,9 @@
 ## The result is saved in data/results-final.csv.
 
 #Load data and functions
-matched_pairs = read.csv('../data/matched-pairs.csv')
-df_stacked = read.csv('../data/data-stacked.csv')
-df_cleaned = read.csv('../data/data-cleaned.csv')
+matched_pairs = read.csv('../data/matched-pairs-small.csv')
+df_stacked = read.csv('../data/data-stacked-small.csv')
+df_cleaned = read.csv('../data/data-cleaned-small.csv')
 source("helpers.R")
 
 #Create matched pair ID & treatment wave
@@ -52,22 +52,22 @@ results_final = bind_rows(matched_pairs, matched_pairs, .id = "origin") %>%
 
 #Create the treatment indicator
 results_final = mutate(results_final, treated = ifelse(origin == 1, 1, 0)) %>%
-  select(HHIDPN, pair_ID, treated, outcome, cov_wave, treated_wave, RADYEAR)
+  dplyr::select(HHIDPN, pair_ID, treated, outcome, cov_wave, treated_wave, RADYEAR)
 
 #Join the covariates
 results_final = left_join(results_final, df_stacked,
                           by = c("HHIDPN" = "HHIDPN", "treated_wave" = "W")) %>%
-  select(-treated_wave)
+  dplyr::select(-treated_wave)
 
 #Return RADYEAR back to NA if they're still living
 results_final$RADYEAR = ifelse(results_final$RADYEAR == 3000, NA, results_final$RADYEAR)
 
 #Save the results
-write.csv(results_final,'../data/results-final.csv', row.names = FALSE)
+write.csv(results_final,'../data/results-final-small.csv', row.names = FALSE)
 
 
 #Create a dataset to check balance
 bl.cols = colnames(df_stacked)
 bl.cols = bl.cols[c(1,3,14:28)]
 initial_balance = unique(df_stacked[bl.cols])
-write.csv(initial_balance,'../data/initial-balance.csv', row.names = FALSE)
+write.csv(initial_balance,'../data/initial-balance-small.csv', row.names = FALSE)

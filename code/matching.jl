@@ -58,6 +58,7 @@ end
 """
 Uses JuMP to perform balanced risk set matching 
 - `distance` Distance matrix dictionary of size (treated x control) with keys (treated ID, control ID)
+             Note: Distances for matches that are impossible should be a very large number
 - `balance`  Balance matrix dictionary of size ((treated+control) x k) where k is the number of
              covariates for which we desire exact match. Has keys (subject ID, k). Individual entries are 
              values of the k binary covariates for that particular subject 
@@ -129,7 +130,7 @@ end
 function main()
 
     #LARGE_DIST is used for impossible matches
-    LARGE_DIST = 1e14
+    LARGE_DIST = 1e30
 
     #This allows us to read the data in 
     script_location = @__DIR__
@@ -141,13 +142,15 @@ function main()
     treated = [ i for i in keys(wsdict) if wsdict[i] != -1 ]
     control = collect(keys(wsdict))
 
-    #Build the balance matrix/dictionary on column #23 - gender
+    #Build the balance matrix/dictionary on column #22 - gender, #14 - ever smoke at baseline, #23 hispanic, #13 initial earnings
     #Problem: Right now, some control don't have year 2 (but everyone should)
-    balancedict = Dict( (j,1) => datadict[j,2][23] for j in control)
+    #datadict[j,2][23] == The 23rd covariate in the 2nd year for the jth control
+    balance_cov = [14,22]
+    balancedict = Dict( (j,i) => datadict[j,2][i] for j in control, i in balance_cov)
     
     #Calculate the distance matrix as a dictionary
     S = inv_cov(df)
-    distancedict = Dict( (i, j) => pairwise_mahalanobis(i, j, S, df, wsdict, datadict) for i in treated, j in control )
+    distancedict = Dict( (i, j) => pairwise_mahalanobis(i, j, S, df, wsdict, datadict, LARGE_DIST = LARGE_DIST) for i in treated, j in control )
 
     # Perform the matching for the maximum number of possible sets;
     count = sum([(t,wsdict[t]) in keys(datadict) for t in treated])

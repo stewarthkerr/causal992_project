@@ -5,14 +5,14 @@ date: "12/2/2019"
 output: pdf_document
 ---
 
-In terms of balance, the matching improved balance significantly. All of our after matching standardized differences were below 0.1. Note that we only checked balance on baseline covariates and threw our all of the matched pairs where subjects died in the same wave or lived throughout the followup period. Another possible avenue to address balance issues is enforcing the balance constraints in our risk set matching. This would force balance among important covariates. Alternatively, we could also do risk set matching allowing for matching with multiple controls. Out of the 16 baseline covariates that balance was checked on seven had a higher standardized differences before matching.The code to assess balance is below.
+In terms of balance, the matching improved balance significantly. All of our after matching standardized differences were below 0.1. Note that we only checked balance on baseline covariates and threw our all of the matched pairs where subjects died in the same wave or lived throughout the followup period. Another possible avenue to address balance issues is enforcing the balance constraints in our risk set matching. This would force balance among important covariates. Alternatively, we could also do risk set matching allowing for matching with multiple controls. Out of the 16 baseline covariates that balance was checked on seven that had a higher standardized differences before matching.The code to assess balance is below.
 
 ### Balance
 ```{r}
 library(dplyr)
 library(ggplot2)
 
-balance <- read.csv("../data/initial-balance.csv")
+balance <- read.csv("../data/initial-balance-small.csv")
 before <- balance[,c(2:17)]
 before$FIRST_WS[before$FIRST_WS == -1] <- 0
 before$FIRST_WS[before$FIRST_WS > 0] <- 1
@@ -33,7 +33,7 @@ controlvar=apply(controlmat.before,2,var,na.rm=TRUE);
 stand.diff.before=(treatmean-controlmean.before)/sqrt((treatvar+controlvar)/2)
 
 #Load matches
-data <- read.csv("../data/results-final.csv")
+data <- read.csv("../data/results-final-small.csv")
 df1 = subset(data, select=c("RABYEAR", "RAEDYRS", "HATOTW", "RSMOKEV", "RSMOKEN", "RDRINKD", "RLTACTF", "RVGACTF", "RBMI", "RRISK", "RBEQLRG", "RAGENDER_1.Male", "RACE_ETHN_Hispanic", "RACE_ETHN_NonHispBlack", "RACE_ETHN_NonHispOther"))
 
 # Standardized differences after matching
@@ -42,7 +42,7 @@ controlmean.after=apply(controlmat.after,2,mean);
 # Standardized differences after matching
 stand.diff.after=(treatmean[-1]-controlmean.after)/sqrt((treatvar[-1]+controlvar[-1])/2);
 
-standBeforeAfter = cbind(stand.diff.before[-1],stand.diff.after[-1])
+standBeforeAfter = cbind(stand.diff.before[-1],stand.diff.after)
 
 colnames(standBeforeAfter ) = c("Before Match (Standardized Diff)",
                                 "After Match (Standardized Diff)")
