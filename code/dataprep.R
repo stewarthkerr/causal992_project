@@ -58,3 +58,5 @@ df <- select(df, bl_covariates, tv_covariates)
 df$INCOME <- cut(dat$R1IEARN, c(0,31000,42000,126000,188000,1250000), right=FALSE, labels=c("low", "low-middle", "middle", "upper-middle", "high"))
 
 write.csv(df, "../data/data-subset.csv", row.names = FALSE)
+
+Susan try to see if she can push
