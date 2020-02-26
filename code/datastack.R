@@ -16,7 +16,7 @@ bl.cols = c("RABYEAR","RAGENDER", "RACE_ETHN","RAEDYRS",
             "H1ATOTW","R1SMOKEV", "R1SMOKEN","R3DRINKD","R1LTACTF",
             "R1VGACTF", "R1BMI","R1RISK","R1BEQLRG")
 df_analysis = df[complete.cases(df[,c(bl.cols)]),]
-df_analysis = df_analysis[!(df$BASELINE_POVERTY),]
+df_analysis = df_analysis[!(df_analysis$BASELINE_POVERTY),]
 
 for (wave in 2:12){
   ## Subset the data to this wave
@@ -35,8 +35,9 @@ for (wave in 2:12){
 } 
 
 ## Convert unordered columns to dummy_cols and remove RADYEAR
+## Initial wealth and initial income also converted to dummy_cols for exact balance later
 df_stacked = dummy_cols(df_stacked, 
-                     select_columns = c("RAGENDER","RACE_ETHN","RMSTAT","RLBRF"), 
+                     select_columns = c("RAGENDER","RACE_ETHN","RMSTAT","RLBRF","INITIAL_INCOME","INITIAL_WEALTH"), 
                      remove_most_frequent_dummy = TRUE) %>%
   select(-RAGENDER,-RACE_ETHN,-RMSTAT,-RLBRF,-RADYEAR)
 

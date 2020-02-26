@@ -63,7 +63,7 @@ data.upto = function(df, W) {
   ## Baseline 
   bl.cols = c("RABYEAR","RAGENDER", "RACE_ETHN","RAEDYRS",
               "H1ATOTW","R1SMOKEV", "R1SMOKEN","R3DRINKD","R1LTACTF",
-              "R1VGACTF", "R1BMI","R1RISK","R1BEQLRG")
+              "R1VGACTF", "R1BMI","R1RISK","R1BEQLRG","INITIAL_WEALTH","INITIAL_INCOME")
   special.cols = c("HHIDPN", "W","FIRST_WS", "RADYEAR")
   cols = c(special.cols, tv.cols, bl.cols)
   

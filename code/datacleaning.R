@@ -18,6 +18,14 @@ df <- mutate(df, RACE_ETHN =
 #Determine people that started with negative wealth
 df$BASELINE_POVERTY = df$H1ATOTW < 0
 
+#Code initial income into different levels
+##R1IEARN:W1 Income:R Earnings
+df$INITIAL_INCOME <- cut(df$R1IEARN, c(0,31000,42000,126000,188000,max(df$R1IEARN,na.rm = TRUE)), right=FALSE, include.lowest = TRUE, labels=c("low", "low-middle", "middle", "upper-middle", "high"))
+
+#Code quantiles for initial wealth among those who started with non-negative wealth
+wealth_quantiles = quantile(df[df$BASELINE_POVERTY==0,]$H1ATOTW, c(0,0.2,0.4,0.6,0.8,1.0), na.rm = TRUE)
+df$INITIAL_WEALTH = cut(df$H1ATOTW, wealth_quantiles, right=FALSE, include.lowest = TRUE, labels=c("low", "low-middle", "middle", "upper-middle", "high"))
+
 #Calculate wealth shock & first wealth shock
 df$FIRST_WS = -1
 for (i in 1:11){
@@ -55,18 +63,18 @@ for (w in 2:12) {
 }
 df = select(df, -one_of(expand.indeces(adls, start = 2, end = 12)))
 
+
 ## creating NAs for time-varying covariates that doesn't exist in data
 ## (e.g. at wave 1)
 ## nevermind... this doesn't make sense
 ## nacovs = setdiff(expand.indeces(tv.cols), names(df))
 ## for (column in nacovs) eval(parse(text = paste0("df$", column, "=NA")))
 
+#Remove columns we don't want
 df$R2OOPMD = NULL
-
-## throw away observations with missing data
 df$X = NULL
-narate = sort(unlist(purrr::map(df, function(x) mean(is.na(x)))), decreasing = T)
-head(narate, n = 50)
+#Calculates % NA in each column
+#narate = sort(unlist(purrr::map(df, function(x) mean(is.na(x)))), decreasing = T)
 
 ## Save data as 
 df = write.csv(df,'../data/data-cleaned.csv', row.names = FALSE)

@@ -3,7 +3,7 @@ Does experiencing a large wealth shock, defined as the loss of 75% or more of yo
 
 
 ## Data
-Data for the project comes from the most recent version of the University of Michigan's HRS study. We used the RAND edited version of the data. Mirroring the JAMA study, we included individuals from the first HRS wave, born between 1931 and 1941 and first interviewed in 1992, for our analysis. Within the data subdirectory, `dataprep.R` was run to subset this HRS cohort, producing the file `data/data-subset.csv`. The code `datacleaning.R` was then run to clean the data (`data/data-cleaned.csv`), removing people with missing data and combining covariates to match the JAMA study. Note that covariates were lagged by 1 time period so that they proceded treatment.
+Data for the project comes from the most recent version of the University of Michigan's HRS study. We used the RAND edited version of the data. Mirroring the JAMA study, we included individuals from the first HRS wave, born between 1931 and 1941 and first interviewed in 1992, for our analysis. Within the data subdirectory, `dataprep.R` was run to subset this HRS cohort, producing the file `data/data-subset.csv`. The code `datacleaning.R` was then run to clean the data (`data/data-cleaned.csv`) and add additional columns of interest. Lastly, the code `datastack.R` was run to remove people with missing data and prepare the dataset that is used for matching. Note that covariates were lagged by 1 time period so that they proceded treatment.
 
 ### Structure of cleaned data
 Below lowercase `w` is placeholder for wave, which ranges between 1 (1992) and 12 (2016) varying 2 years between each wave.

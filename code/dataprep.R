@@ -53,10 +53,5 @@ tv_covariates <- c(sprintf("R%dIEARN",1:12), sprintf("R%dMSTAT",1:12),
 #Subset the df
 df <- select(df, bl_covariates, tv_covariates)
 
-#Code income into different levels
-##R1IEARN:W1 Income:R Earnings
-df$INCOME <- cut(dat$R1IEARN, c(0,31000,42000,126000,188000,1250000), right=FALSE, labels=c("low", "low-middle", "middle", "upper-middle", "high"))
-
+#Save the subsetted data
 write.csv(df, "../data/data-subset.csv", row.names = FALSE)
-
-Susan try to see if she can push

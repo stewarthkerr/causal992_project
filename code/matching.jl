@@ -127,6 +127,23 @@ function matched_sets(treated, control, amat::Matrix)
     return set
 end
 
+"""
+Finds the first wave for a given subject
+- `d` A the data dictionary
+- `ID` the HHIDPN
+"""
+function wavelookup(d::Dict, ID::Int64)
+    #Get all the possible waves
+    waves = sort(unique(getindex.(keys(d),2)))
+    for w in waves
+        #Return the first wave for which ID has data
+        if haskey(d, (ID,w))
+            return w
+        end
+    end
+    error("LookupError: This ID isn't in dictionary.")
+end
+
 function main()
 
     #LARGE_DIST is used for impossible matches
@@ -134,7 +151,7 @@ function main()
 
     #This allows us to read the data in 
     script_location = @__DIR__
-    df = CSV.read(string(script_location,"/../data/data-stacked-small.csv"))
+    df = CSV.read(string(script_location,"/../data/data-stacked.csv"))
 
     #Create dictionaries
     wsdict = Dict(r[:HHIDPN] => r[:FIRST_WS] for r in eachrow(unique(df[:,[:HHIDPN, :FIRST_WS]])))    
@@ -143,10 +160,10 @@ function main()
     control = collect(keys(wsdict))
 
     #Build the balance matrix/dictionary on column #22 - gender, #14 - ever smoke at baseline, #23 hispanic, #13 initial earnings
-    #Problem: Right now, some control don't have year 2 (but everyone should)
     #datadict[j,2][23] == The 23rd covariate in the 2nd year for the jth control
-    balance_cov = [14,22]
-    balancedict = Dict( (j,i) => datadict[j,2][i] for j in control, i in balance_cov)
+    balance_cov = [14]
+    balancedict = Dict( (j,i) => datadict[j,wavelookup(datadict,j)][i] for j in control, i in balance_cov)
+    #balancedict = Dict()
     
     #Calculate the distance matrix as a dictionary
     S = inv_cov(df)
@@ -155,7 +172,7 @@ function main()
     # Perform the matching for the maximum number of possible sets;
     count = sum([(t,wsdict[t]) in keys(datadict) for t in treated])
     match = brs_matching(distancedict,balancedict,count)
-    CSV.write("../data/matched-pairs-small.csv", DataFrame(match), header = ["treated","control"])
+    CSV.write("../data/matched-pairs.csv", DataFrame(match), header = ["treated","control"])
       
 end
 
