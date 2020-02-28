@@ -1,59 +1,55 @@
-## This is the script for finding subgroups using the CART algorthim from the rpart package
+# This is the script for finding subgroups using the CART algorthim from the rpart package
 
-#Load data and functions/libraries
+# Load data and functions/libraries
 source("helpers.R")
-results_final = read.csv('../data/results-final-small.csv')
+results_final = read.csv('../data/results-final.csv')
 
-#Combine treated, control onto one row
+# Find covariates for which we have exact matching
+### Subset results into treated and control
 treated = filter(results_final, treated == 1) %>%
-  select(-treated, -outcome)
+  select(-treated, -outcome) %>%
+  arrange(pair_ID)
 control = filter(results_final, treated == 0) %>%
-  select(-treated, -outcome)
-matched_pairs = inner_join(treated,control, by = "pair_ID", suffix = c(".treated", ".control"))
+  select(-treated, -outcome) %>%
+  arrange(pair_ID)
 
-#Recode the outcome, -1 = control outlived treatment, 0 = died at same time, 1 = treatment outlived control
-# -- later, do this in resultsprep.R, it's currently bugged
-#Create CART outcome which is directionless
-matched_pairs = mutate(matched_pairs, outcome = case_when(
-  is.na(RADYEAR.treated) & is.na(RADYEAR.control) ~ 0,
-  is.na(RADYEAR.treated) & !is.na(RADYEAR.control) ~ 1,
-  !is.na(RADYEAR.treated) & is.na(RADYEAR.control) ~ -1,
-  RADYEAR.treated == RADYEAR.control ~ 0,
-  RADYEAR.treated < RADYEAR.control ~ -1,
-  RADYEAR.treated > RADYEAR.control ~ 1
-  ),
-  CART_outcome = abs(outcome)
-)
+# Extract covariates that have exact matching
+treated_covariates = treated[6:ncol(treated)]
+control_covariates = control[6:ncol(treated)]
+exact_matches = names(which((colSums(abs(treated_covariates - control_covariates)) == 0)))
 
-#Check for exact matching among covariates
-treated_covariates = matched_pairs[6:43]
-control_covariates = matched_pairs[48:85]
-exact_matches = gsub(".treated","",names(which((colSums(abs(treated_covariates - control_covariates)) == 0))))
-exact_matches_CART = names(which((colSums(abs(treated_covariates - control_covariates)) == 0)))
+# For specified covariates, find all pairs which have exact matching
+exact_covariates = c("RSMOKEV", "RAGENDER_1.Male","INITIAL_WEALTH_high","INITIAL_WEALTH_low")
+exact_covariates_treated = select(treated_covariates, matches(paste(exact_covariates, collapse="|")))
+exact_covariates_control = select(control_covariates, matches(paste(exact_covariates, collapse="|")))
+exact_obs = which(rowSums(abs(exact_covariates_treated - exact_covariates_control)) == 0)
 
-#Subset matched_pairs to keep only covariates with exact matching
-matched_pairs_exact = select(matched_pairs, contains("HHIDPN"), contains("outcome"), matches(paste(exact_matches, collapse="|")))
-CART_input = select(matched_pairs, CART_outcome, matches(paste(exact_matches_CART, collapse="|")))
+# Now, for those pairs which have exact matching on important covariates,
+# create a CART data frame containing all exact matched covariates with outcome
+treated_CART = filter(treated, pair_ID %in% exact_obs) %>%
+  select(pair_ID, RADYEAR,
+    matches(paste(exact_matches, collapse="|")),
+    matches(paste(exact_covariates,collapse="|")))
+control_CART = filter(control, pair_ID %in% exact_obs) %>%
+  select(pair_ID, RADYEAR,
+    matches(paste(exact_matches, collapse="|")),
+    matches(paste(exact_covariates,collapse="|")))
+matched_pairs = inner_join(treated_CART,control_CART, by = c("pair_ID",exact_matches,exact_covariates), suffix = c(".treated",".control"))
+
+### Recode the outcome, -1 = control outlived treatment, 0 = died at same time, 1 = treatment outlived control
+### -- later, do this in resultsprep.R, it's currently bugged
+### Create CART outcome which is directionless
+CART_input = mutate(matched_pairs, CART_outcome = case_when(
+  is.na(RADYEAR.treated) & is.na(RADYEAR.control) ~ abs(0),
+  is.na(RADYEAR.treated) & !is.na(RADYEAR.control) ~ abs(1),
+  !is.na(RADYEAR.treated) & is.na(RADYEAR.control) ~ abs(-1),
+  RADYEAR.treated == RADYEAR.control ~ abs(0),
+  RADYEAR.treated < RADYEAR.control ~ abs(-1),
+  RADYEAR.treated > RADYEAR.control ~ abs(1))
+) %>%
+  select(-RADYEAR.treated, -RADYEAR.control, - pair_ID)
 
 #Build the CART
 tree = rpart(CART_outcome ~ ., data = CART_input)
 rpart.plot(tree)
-
-
-################################################################################################################################
-################################################################################################################################
-################################################################################################################################
-# Alternatively, we can choose certain covariates and select only pairs which have exact matching in that covariate
-exact_covariates = c("RSMOKEV", "RAGENDER_1.Male")
-treated_covariates_m2 = select(treated_covariates, matches(paste(exact_covariates, collapse="|")))
-control_covariates_m2 = select(control_covariates, matches(paste(exact_covariates, collapse="|")))
-exact_obs = which(rowSums(abs(treated_covariates_m2 - control_covariates_m2)) == 0)
-matched_pairs_exact_m2 = select(matched_pairs, contains("HHIDPN"), contains("outcome"), matches(paste(exact_matches, collapse="|")), 
-  matches(paste(exact_covariates, collapse="|")))[exact_obs,]
-CART_input_m2 = select(matched_pairs, CART_outcome, matches(paste(exact_matches_CART, collapse="|")),
-  matches(paste(paste0(exact_covariates,".treated"), collapse="|")))[exact_obs,]
-
-#Build the new CART
-tree_m2 = rpart(CART_outcome ~ ., data = CART_input_m2)
-rpart.plot(tree_m2)
 
