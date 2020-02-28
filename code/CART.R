@@ -19,7 +19,7 @@ control_covariates = control[6:ncol(treated)]
 exact_matches = names(which((colSums(abs(treated_covariates - control_covariates)) == 0)))
 
 # For specified covariates, find all pairs which have exact matching
-exact_covariates = c("RSMOKEV", "RAGENDER_1.Male","INITIAL_WEALTH_high","INITIAL_WEALTH_low")
+exact_covariates = c("RSMOKEV", "RAGENDER_1.Male","INITIAL_INCOME")
 exact_covariates_treated = select(treated_covariates, matches(paste(exact_covariates, collapse="|")))
 exact_covariates_control = select(control_covariates, matches(paste(exact_covariates, collapse="|")))
 exact_obs = which(rowSums(abs(exact_covariates_treated - exact_covariates_control)) == 0)
