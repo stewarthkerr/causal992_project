@@ -69,7 +69,7 @@ stand.diff.after = (treatedmean.after-controlmean.after)/sqrt((treatvar+controlv
 
 
 ##Making table standardized differences
-standBeforeAfter = cbind(stand.diff.before,stand.diff.after)
+standBeforeAfter = cbind(stand.diff.before, stand.diff.after)
 
 colnames(standBeforeAfter ) = c("Before Match (Standardized Diff)",
                                 "After Match (Standardized Diff)")
@@ -81,9 +81,9 @@ knitr::kable(round(abs(standBeforeAfter),3), caption = "Differences in Covariate
 ### Love Plot
 ```{r}
 library(ggplot2)  
-abs.stand.diff.before=abs(stand.diff.before[-1])
+abs.stand.diff.before=abs(stand.diff.before)
 abs.stand.diff.after=abs(stand.diff.after)
-covariates=names(stand.diff.before[-1])
+covariates=names(stand.diff.before)
 
 plot.dataframe = data.frame(abs.stand.diff=c(abs.stand.diff.before,abs.stand.diff.after), covariates=rep(covariates,2), type=c(rep("Before",length(covariates)), rep("After",length(covariates))))
 
