@@ -35,6 +35,7 @@ control_CART = filter(control, pair_ID %in% exact_obs) %>%
     matches(paste(exact_matches, collapse="|")),
     matches(paste(exact_covariates,collapse="|")))
 matched_pairs = inner_join(treated_CART,control_CART, by = c("pair_ID",exact_matches,exact_covariates), suffix = c(".treated",".control"))
+matched_pairs.CART = write.csv(matched_pairs, '../data/matched_pairs.CART.csv', row.names = FALSE)
 
 ### Recode the outcome, -1 = control outlived treatment, 0 = died at same time, 1 = treatment outlived control
 ### -- later, do this in resultsprep.R, it's currently bugged
