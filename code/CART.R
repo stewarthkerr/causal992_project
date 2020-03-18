@@ -20,20 +20,20 @@ exact_matches = names(which((colSums(abs(treated_covariates - control_covariates
 
 # For specified covariates, find all pairs which have exact matching
 exact_covariates = c("RSMOKEV", "RAGENDER_1.Male","INITIAL_INCOME")
-exact_covariates_treated = dplyr::select(treated_covariates, matches(paste(exact_covariates, collapse="|")))
-exact_covariates_control = dplyr::select(control_covariates, matches(paste(exact_covariates, collapse="|")))
+exact_covariates_treated = dplyr::select(treated_covariates, one_of(exact_covariates))
+exact_covariates_control = dplyr::select(control_covariates, one_of(exact_covariates))
 exact_obs = which(rowSums(abs(exact_covariates_treated - exact_covariates_control)) == 0)
 
 # Now, for those pairs which have exact matching on important covariates,
 # create a CART data frame containing all exact matched covariates with outcome
 treated_CART = filter(treated, pair_ID %in% exact_obs) %>%
   dplyr::select(pair_ID, RADYEAR,
-    matches(paste(exact_matches, collapse="|")),
-    matches(paste(exact_covariates,collapse="|")))
+    one_of(exact_matches),
+    one_of(exact_covariates))
 control_CART = filter(control, pair_ID %in% exact_obs) %>%
   dplyr::select(pair_ID, RADYEAR,
-    matches(paste(exact_matches, collapse="|")),
-    matches(paste(exact_covariates,collapse="|")))
+    one_of(exact_matches),
+    one_of(exact_covariates))
 matched_pairs = inner_join(treated_CART,control_CART, by = c("pair_ID",exact_matches,exact_covariates), suffix = c(".treated",".control"))
 matched_pairs.CART = write.csv(matched_pairs, '../data/matched_pairs.CART.csv', row.names = FALSE)
 
@@ -51,15 +51,9 @@ CART_input = mutate(matched_pairs, CART_outcome = case_when(
   dplyr::select(-RADYEAR.treated, -RADYEAR.control, - pair_ID)
 
 ###Make variables factors and only include Initial Income
-CART.input = CART_input %>%
-  dplyr::select(-INITIAL_INCOME_high.treated, -INITIAL_INCOME_low.middle.treated, 
-                -INITIAL_INCOME_middle.treated, -INITIAL_INCOME_upper.middle.treated, 
-                -INITIAL_INCOME_high.control, -INITIAL_INCOME_low.middle.control, 
-                -INITIAL_INCOME_middle.control, -INITIAL_INCOME_upper.middle.control)
-names <- c("RACE_ETHN_NonHispOther", "RMSTAT_2.Married.spouse.absent", "RMSTAT_6.Separated.divorced", "RSMOKEV", "INITIAL_INCOME", "RAGENDER_1.Male")
-CART.input[,names] <- lapply(CART.input[,names] , factor)
+CART_input = mutate_all(CART_input, factor)
 
 #Build the CART
-tree = rpart(CART_outcome ~ ., data = CART.input)
+tree = rpart(CART_outcome ~ ., data = CART_input)
 rpart.plot(tree)
 
