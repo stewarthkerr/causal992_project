@@ -168,7 +168,7 @@ function main()
     # Perform the matching for the maximum number of possible sets;
     count = sum([(t,wsdict[t]) in keys(datadict) for t in treated])
     match = brs_matching(distancedict,balancedict,count,1e13) #I choose lambda to be 1e13 because I want it to be smaller than the impossible match distance (which is 1e14)
-    CSV.write("../data/matched-pairs.csv", DataFrame(match), header = ["treated","control"])
+    CSV.write(string(script_location,"/../data/matched-pairs.csv"), DataFrame(match), header = ["treated","control"])
       
 end
 
