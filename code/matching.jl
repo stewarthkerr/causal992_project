@@ -63,8 +63,9 @@ Uses JuMP to perform balanced risk set matching
              covariates for which we desire exact match. Has keys (subject ID, k). Individual entries are 
              values of the k binary covariates for that particular subject 
 - `numsets`  Number of matched pairs we want
+- `lambda`   Penalty assessed for violating fine balance, typically will be the sum of all distances in distance matrix
 """
-function brs_matching(distance, balance, numsets)
+function brs_matching(distance, balance, numsets, lambda)
     #Define match Model
     m = Model(with_optimizer(Gurobi.Optimizer, Presolve=0, OutputFlag=1, NodefileStart=0.5))
     
@@ -72,8 +73,7 @@ function brs_matching(distance, balance, numsets)
     #Vectors of treated & control individuals
     treated = unique(first.(keys(distance)))
     control = unique(last.(keys(distance)))
-    #Penalty for imbalanced
-    lambda = sum(values(distance))
+
     #Vector of balance covariates
     bcov = unique(last.(keys(balance)))
 
@@ -146,9 +146,6 @@ end
 
 function main()
 
-    #LARGE_DIST is used for impossible matches
-    LARGE_DIST = 1e30
-
     #This allows us to read the data in 
     script_location = @__DIR__
     df = CSV.read(string(script_location,"/../data/data-stacked.csv"))
@@ -159,19 +156,18 @@ function main()
     treated = [ i for i in keys(wsdict) if wsdict[i] != -1 ]
     control = collect(keys(wsdict))
 
-    #Build the balance matrix/dictionary on column #22 - gender, #14 - ever smoke at baseline, #23 hispanic, #13 initial earnings
+    #Build the balance matrix/dictionary on column #22 - gender, #14 - ever smoke at baseline, #23 hispanic, #13 initial earnings, #29 = initial wealth, 30 = initial income
     #datadict[j,2][23] == The 23rd covariate in the 2nd year for the jth control
-    balance_cov = [14]
+    balance_cov = [29]
     balancedict = Dict( (j,i) => datadict[j,wavelookup(datadict,j)][i] for j in control, i in balance_cov)
-    #balancedict = Dict()
     
     #Calculate the distance matrix as a dictionary
     S = inv_cov(df)
-    distancedict = Dict( (i, j) => pairwise_mahalanobis(i, j, S, df, wsdict, datadict, LARGE_DIST = LARGE_DIST) for i in treated, j in control )
+    distancedict = Dict( (i, j) => pairwise_mahalanobis(i, j, S, df, wsdict, datadict) for i in treated, j in control )
 
     # Perform the matching for the maximum number of possible sets;
     count = sum([(t,wsdict[t]) in keys(datadict) for t in treated])
-    match = brs_matching(distancedict,balancedict,count)
+    match = brs_matching(distancedict,balancedict,count,1e13) #I choose lambda to be 1e13 because I want it to be smaller than the impossible match distance (which is 1e14)
     CSV.write("../data/matched-pairs.csv", DataFrame(match), header = ["treated","control"])
       
 end

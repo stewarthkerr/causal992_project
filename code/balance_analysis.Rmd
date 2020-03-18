@@ -13,54 +13,43 @@ library(dplyr)
 library(ggplot2)
 library(compare)
 #Load matches
-data <- read.csv("../data/results-final-small.csv")
+after <- read.csv("../data/results-final.csv")
 #Load data before matching
-balance <- read.csv("../data/data-stacked.csv")
-#making the covariates the same for both data sets
-#intersect(names(data), names(balance))
-#names(data) %in% names(balance)
-#names(balance) %in% names(data)
-#names(data)[2:6]
-#names(balance)[2]
-colnames(balance)[2] <- "cov_wave"
-before <- balance[,c(2:41)]
+before <- read.csv("../data/data-stacked.csv")
+#Create a vector of columns for which we want to check balance
+balance_cols = colnames(after)[8:ncol(after)]
 
 #making an outcome variable for before matching
-before$FIRST_WS[before$FIRST_WS == -1] <- 0
-before$FIRST_WS[before$FIRST_WS > 0] <- 1
+before$treated[before$FIRST_WS == -1] = 0
+before$treated[before$FIRST_WS > 0] = 1
 
-##Propensity scores
-propscore.model = glm(FIRST_WS ~ ., family=binomial, x=TRUE, y=TRUE, data=before);
-Xmat = propscore.model$x;
-treated = propscore.model$y
-
-##Before matching
-treatedmat = subset(before, FIRST_WS==1)
-controlmat = subset(before, FIRST_WS==0)
-
-#get rid of outcome, treated, id variables etc..
-treatedmat.before <- treatedmat[,-c(1,2)]
-controlmat.before <- controlmat[,-c(1,2)]
-controlmean.before = apply(controlmat.before, 2, mean, na.rm=TRUE);
-treatmean.before = apply(treatedmat.before, 2, mean, na.rm=TRUE);
-treatvar = apply(treatedmat.before, 2, var, na.rm=TRUE);
-controlvar = apply(controlmat.before, 2, var, na.rm=TRUE);
+#Before matching
+treatedmat = subset(before, treated==1)
+controlmat = subset(before, treated==0)
 
 #Standardized differences before matching
-stand.diff.before = (treatmean.before-controlmean.before)/sqrt((treatvar+controlvar)/2)
+treatedmat.X.before <- treatedmat[,balance_cols]
+controlmat.X.before <- controlmat[,balance_cols]
+controlmean.before = apply(controlmat.X.before, 2, mean, na.rm=TRUE);
+treatmean.before = apply(treatedmat.X.before, 2, mean, na.rm=TRUE);
+treatvar.before = apply(treatedmat.X.before, 2, var, na.rm=TRUE);
+controlvar.before = apply(controlmat.X.before, 2, var, na.rm=TRUE);
+stand.diff.before = (treatmean.before-controlmean.before)/sqrt((treatvar.before+controlvar.before)/2)
 
 ##After matching
-controlmat = subset(data, treated==0)
-treatedmat = subset(data, treated==1)
+controlmat = subset(after, treated==0)
+treatedmat = subset(after, treated==1)
 
 #get rid of outcome, treated, id variables etc..
-controlmat.after <- controlmat[,-c(1, 2, 3, 4, 5, 6, 7)]
-treatedmat.after <- treatedmat[,-c(1, 2, 3, 4, 5, 6, 7)]
-controlmean.after = apply(controlmat.after, 2, mean)
-treatedmean.after = apply(treatedmat.after, 2, mean);
+controlmat.X.after <- controlmat[,balance_cols]
+treatedmat.X.after <- treatedmat[,balance_cols]
+controlmean.after = apply(controlmat.X.after, 2, mean)
+treatedmean.after = apply(treatedmat.X.after, 2, mean)
+treatvar.after = apply(treatedmat.X.after, 2, var, na.rm=TRUE);
+controlvar.after = apply(controlmat.X.after, 2, var, na.rm=TRUE);
 
 # Standardized differences after matching
-stand.diff.after = (treatedmean.after-controlmean.after)/sqrt((treatvar+controlvar)/2);
+stand.diff.after = (treatedmean.after-controlmean.after)/sqrt((treatvar.after+controlvar.after)/2);
 
 ##Making table standardized differences
 standBeforeAfter = cbind(stand.diff.before, stand.diff.after)
