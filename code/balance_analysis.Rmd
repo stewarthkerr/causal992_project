@@ -32,9 +32,9 @@ treatedmat.X.before <- treatedmat[,balance_cols]
 controlmat.X.before <- controlmat[,balance_cols]
 controlmean.before = apply(controlmat.X.before, 2, mean, na.rm=TRUE);
 treatmean.before = apply(treatedmat.X.before, 2, mean, na.rm=TRUE);
-treatvar.before = apply(treatedmat.X.before, 2, var, na.rm=TRUE);
-controlvar.before = apply(controlmat.X.before, 2, var, na.rm=TRUE);
-stand.diff.before = (treatmean.before-controlmean.before)/sqrt((treatvar.before+controlvar.before)/2)
+treatvar = apply(treatedmat.X.before, 2, var, na.rm=TRUE);
+controlvar = apply(controlmat.X.before, 2, var, na.rm=TRUE);
+stand.diff.before = (treatmean.before-controlmean.before)/sqrt((treatvar+controlvar)/2)
 
 ##After matching
 controlmat = subset(after, treated==0)
@@ -45,11 +45,11 @@ controlmat.X.after <- controlmat[,balance_cols]
 treatedmat.X.after <- treatedmat[,balance_cols]
 controlmean.after = apply(controlmat.X.after, 2, mean)
 treatedmean.after = apply(treatedmat.X.after, 2, mean)
-treatvar.after = apply(treatedmat.X.after, 2, var, na.rm=TRUE);
-controlvar.after = apply(controlmat.X.after, 2, var, na.rm=TRUE);
+#treatvar.after = apply(treatedmat.X.after, 2, var, na.rm=TRUE);
+#controlvar.after = apply(controlmat.X.after, 2, var, na.rm=TRUE);
 
 # Standardized differences after matching
-stand.diff.after = (treatedmean.after-controlmean.after)/sqrt((treatvar.after+controlvar.after)/2);
+stand.diff.after = (treatedmean.after-controlmean.after)/sqrt((treatvar+controlvar)/2);
 
 ##Making table standardized differences
 standBeforeAfter = cbind(stand.diff.before, stand.diff.after)
@@ -88,8 +88,8 @@ treatedmat.after <- treatedmat %>%
 
 controlmean.after = apply(controlmat.after, 2, mean)
 treatedmean.after = apply(treatedmat.after, 2, mean)
-treatvar = apply(treatedmat.after, 2, var, na.rm=TRUE);
-controlvar = apply(controlmat.after, 2, var, na.rm=TRUE);
+#treatvar = apply(treatedmat.after, 2, var, na.rm=TRUE);
+#controlvar = apply(controlmat.after, 2, var, na.rm=TRUE);
 
 # Standardized differences after matching
 stand.diff.after = (treatedmean.after-controlmean.after)/sqrt((treatvar+controlvar)/2);
@@ -107,8 +107,8 @@ treatedmat.after <- treatedmat %>%
 
 controlmean.after = apply(controlmat.after, 2, mean)
 treatedmean.after = apply(treatedmat.after, 2, mean)
-treatvar = apply(treatedmat.after, 2, var, na.rm=TRUE);
-controlvar = apply(controlmat.after, 2, var, na.rm=TRUE);
+#treatvar = apply(treatedmat.after, 2, var, na.rm=TRUE);
+#controlvar = apply(controlmat.after, 2, var, na.rm=TRUE);
 # Standardized differences after matching
 stand.diff.after.CART = (treatedmean.after-controlmean.after)/sqrt((treatvar+controlvar)/2);
 ##Making table standardized differences
