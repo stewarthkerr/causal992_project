@@ -57,3 +57,30 @@ CART_input = mutate_all(CART_input, factor)
 tree = rpart(CART_outcome ~ ., data = CART_input)
 rpart.plot(tree)
 
+###################################EXTRA###################################
+
+##note initial income level one only has 0 for response only one pair with this
+x <- subset(CART_input, INITIAL_INCOME==1)
+length(x$INITIAL_INCOME)
+
+library(ggplot2)
+CART_input$CART_outcome <- as.factor(CART_input$CART_outcome)
+g1 <- ggplot(data=CART_input, aes(INITIAL_INCOME)) +
+  geom_bar(aes(fill=CART_outcome, group=CART_outcome, color=CART_outcome))
+g2 <- ggplot(data=CART_input, aes(RAGENDER_1.Male)) +
+  geom_bar(aes(fill=CART_outcome, group=CART_outcome, color=CART_outcome))
+g3 <- ggplot(data=CART_input, aes(RSMOKEV)) +
+  geom_bar(aes(fill=CART_outcome, group=CART_outcome, color=CART_outcome))
+g4 <- ggplot(data=CART_input, aes(RACE_ETHN_NonHispOther)) +
+  geom_bar(aes(fill=CART_outcome, group=CART_outcome, color=CART_outcome))
+g5 <- ggplot(data=CART_input, aes(RMSTAT_2.Married.spouse.absent)) +
+  geom_bar(aes(fill=CART_outcome, group=CART_outcome, color=CART_outcome))
+g6 <- ggplot(data=CART_input, aes(RMSTAT_6.Separated.divorced)) +
+  geom_bar(aes(fill=CART_outcome, group=CART_outcome, color=CART_outcome))
+
+g1
+g2
+g3
+g4
+g5
+g6
