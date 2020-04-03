@@ -19,6 +19,7 @@ matched_pairs$cov_wave = (matched_pairs$treated_wave - 1)
 df_cleaned$RADYEAR = ifelse(is.na(df_cleaned$RADYEAR), 3000, df_cleaned$RADYEAR)
 
 #Create outcome variable
+### -1 = control outlived treatment, 0 = died at same time, 1 = treatment outlived control
 matched_pairs = left_join(matched_pairs,
                           unique(df_cleaned[c("HHIDPN","RADYEAR")]),
                           by = c("treated" = "HHIDPN")) %>%
@@ -27,11 +28,11 @@ matched_pairs = left_join(matched_pairs,
 matched_pairs = mutate(matched_pairs,
                        outcome = case_when(
                          #No difference
-                         RADYEAR_treated == RADYEAR_control ~ -1,
+                         RADYEAR_treated == RADYEAR_control ~ 0,
                          #Control lives longer than treatment
-                         RADYEAR_treated < RADYEAR_control  ~ 1,
+                         RADYEAR_treated < RADYEAR_control  ~ -1,
                          #Treatment lives longer than control
-                         RADYEAR_treated > RADYEAR_control  ~ 0
+                         RADYEAR_treated > RADYEAR_control  ~ 1
                        )
 )
 
@@ -41,14 +42,8 @@ results_final = bind_rows(matched_pairs, matched_pairs, .id = "origin") %>%
     origin == 1 ~ treated,
     origin == 2 ~ control
   ),
-  outcome = case_when(
-    outcome == -1              ~ -1,
-    origin == 1 & outcome == 1 ~ 0,
-    origin == 1 & outcome == 0 ~ 1,
-    origin == 2 & outcome == 1 ~ 1,
-    origin == 2 & outcome == 0 ~ 0),
   RADYEAR = ifelse(origin == 1, RADYEAR_treated, RADYEAR_control)) %>%
-  select(HHIDPN, origin, pair_ID, cov_wave, treated_wave, outcome, RADYEAR)
+  dplyr::select(HHIDPN, origin, pair_ID, cov_wave, treated_wave, outcome, RADYEAR)
 
 #Create the treatment indicator
 results_final = mutate(results_final, treated = ifelse(origin == 1, 1, 0)) %>%
@@ -64,7 +59,6 @@ results_final$RADYEAR = ifelse(results_final$RADYEAR == 3000, NA, results_final$
 
 #Save the results
 write.csv(results_final,'../data/results-final.csv', row.names = FALSE)
-
 
 #Create a dataset to check balance
 bl.cols = colnames(df_stacked)

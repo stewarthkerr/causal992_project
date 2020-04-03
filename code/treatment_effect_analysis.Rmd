@@ -13,6 +13,9 @@ In an attempt to get an estimate for the average treatment effect, the IPW estim
 
 ### Testing for Treatment Effect
 ```{r}
+
+### THIS NO LONGER WORKS BECAUSE WE CHANGED THE OUTCOME
+
 data <- read.csv("../data/results-final.csv")
 library(exactRankTests)
 
