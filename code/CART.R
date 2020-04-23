@@ -2,8 +2,8 @@
 # TODO: Use mipmatch to do repairing
 
 # Choose which covariates to exact match on
-exact_covariates = c("RSMOKEN", "RAGENDER_1.Male", "INITIAL_INCOME")
-#GOOD CANDIDATES ARE RSHLT, RESMOKEN, RHLTHLM
+exact_covariates = c("RSMOKEN", "RAGENDER_1.Male", "INITIAL_INCOME", "RSHLT")
+#GOOD CANDIDATES ARE RSHLT, RSMOKEN, RHLTHLM
 
 # Load data and functions/libraries
 source("helpers.R")
@@ -74,6 +74,7 @@ control_CART = filter(control, pair_ID %in% CART_exact_obs) %>%
                 one_of(exact_matches),
                 one_of(CART_covariates))
 matched_pairs = inner_join(treated_CART,control_CART, by = c("pair_ID","outcome",exact_matches,CART_covariates), suffix = c(".treated",".control"))
+write.csv(matched_pairs, "../data/matched_pairs.CART.csv", row.names = FALSE)
 
 ### Recode the outcome for CART (directionless)
 CART_input = mutate(matched_pairs, CART_outcome = abs(outcome)) %>%
@@ -86,8 +87,13 @@ CART_input = mutate_all(CART_input, factor)
 final_tree = rpart(CART_outcome ~ ., data = CART_input)
 rpart.plot(final_tree)
 
-### This gets what leaf the pair ends on:
-#leaf = final_tree$where
+### This gets what leaf each pair ends on:
+leaf = final_tree$where
+
+### Save the covariates used in CART
+CART_covariates = names(final_tree$variable.importance)
+write.csv(CART_covariates, "../data/CART-covariates.csv", row.names = FALSE)
+
 
 # ###################################EXTRA###################################
 # 

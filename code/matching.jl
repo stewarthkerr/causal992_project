@@ -6,7 +6,7 @@ Calculates the inverse of the covariance matrix of a matrix
 - `df` The matrix we wish to calculate covariance for, as a DataFrame
 """
 function inv_cov(df::DataFrame)::Matrix{Float64}
-    mat = Matrix(df[:, Not([:HHIDPN, :FIRST_WS, :W])])
+    mat = Matrix(df)
     return inv(mat' * mat)
 end
 
@@ -70,9 +70,10 @@ function brs_matching(distance, balance, numsets, lambda)
     m = Model(with_optimizer(Gurobi.Optimizer, Presolve=0, OutputFlag=1, NodefileStart=0.5))
     
     ## Constants
-    #Vectors of treated & control individuals
+    #Vectors of treated and control individuals
     treated = unique(first.(keys(distance)))
     control = unique(last.(keys(distance)))
+    treated_control = intersect(treated,control)
 
     #Vector of balance covariates
     bcov = unique(last.(keys(balance)))
@@ -86,12 +87,13 @@ function brs_matching(distance, balance, numsets, lambda)
     @variable(m, ng[bcov] >= 0)
 
     ## Contraints
-    #There are a total of S sets
+    # There are a total of S sets
     @constraint(m, sum(f[i,j] for i in treated, j in control) >= numsets)
     # Each person is in at most 1 set
-    @constraint(m, a[j in control], sum(f[i,j] for i in treated) <= 1 )
-    @constraint(m, a2[i in treated], sum(f[i,j] for j in control) <= 1 )
-    #Enforces perfect balance
+    #@constraint(m, a[j in control], sum(f[i,j] for i in treated) <= 1 ) #Each person is only control at most once
+    #@constraint(m, a2[i in treated], sum(f[i,j] for j in control) <= 1 ) #Each person is only treated at most once
+    @constraint(m, a[j in control], (sum(f[i,j] for i in treated) + sum(f[j,k] for k in control if j in treated)) <= 1) 
+    # Enforces perfect balance
     @constraint(m, c[k in bcov], (sum(f[i,j]*balance[i,k] - f[i,j]*balance[j,k] for i in treated, j in control))  <= pg[k])
     @constraint(m, c2[k in bcov], (sum(f[i,j]*balance[j,k] - f[i,j]*balance[i,k] for i in treated, j in control)) <= ng[k])
 
@@ -101,7 +103,7 @@ function brs_matching(distance, balance, numsets, lambda)
 
     #Check if we actually found a solution
     val = objective_value(m)
-    val < LARGE_DIST || error("This matching is infeasible.")
+    val < Inf || error("This matching is infeasible.")
 
     #Return Sx2 matrix of the IDs in the matched pair
     assignment = [ (JuMP.value(f[i,j])) for i in treated, j in control ]
@@ -162,7 +164,7 @@ function main()
     balancedict = Dict( (j,i) => datadict[j,wavelookup(datadict,j)][i] for j in control, i in balance_cov)
     
     #Calculate the distance matrix as a dictionary
-    S = inv_cov(df)
+    S = inv_cov(df[:, Not([:HHIDPN, :FIRST_WS, :W])])
     distancedict = Dict( (i, j) => pairwise_mahalanobis(i, j, S, df, wsdict, datadict) for i in treated, j in control )
 
     # Perform the matching for the maximum number of possible sets;
@@ -171,4 +173,25 @@ function main()
     CSV.write(string(script_location,"/../data/matched-pairs.csv"), DataFrame(match), header = ["treated","control"])
       
 end
+
+"""
+After initial matching and CART, repairs the remaining observations
+"""
+function repairing()
+
+    #This allows us to read the data in 
+    script_location = @__DIR__
+    df = CSV.read(string(script_location,"/../data/data-repairing.csv"))
+
+    #Create dictionaries
+    wsdict = Dict(r[:HHIDPN] => r[:FIRST_WS] for r in eachrow(unique(df[:,[:HHIDPN, :FIRST_WS]])))    
+    treateddict = Dict(r[:HHIDPN] => r[:treated] for r in eachrow(unique(df[:,[:HHIDPN, :treated]])))
+    datadict = Dict( (r[:HHIDPN], r[:W])::Tuple{Int64,Int64} => Vector(r[Not([:HHIDPN, :FIRST_WS, :W, :treated])])::Vector{Int64} for r in eachrow(df))
+    treated = [ i for i in keys(treateddict) if treateddict[i] == 1]
+    control = [ i for i in keys(treateddict) if treateddict[i] == 0]
+
+end
+
+
+
 
