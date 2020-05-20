@@ -162,7 +162,7 @@ function main()
 
     #This allows us to read the data in 
     script_location = @__DIR__
-    df = CSV.read(string(script_location,"/../data/data-stacked.csv"))
+    df = CSV.read(string(script_location,"/../../../../data/data-stacked.csv"))
 
     #Create dictionaries
     wsdict = Dict(r[:HHIDPN] => r[:FIRST_WS] for r in eachrow(unique(df[:,[:HHIDPN, :FIRST_WS]])))    
@@ -185,7 +185,7 @@ function main()
     # Perform the matching for the maximum number of possible sets;
     sets_count = sum([(t,wsdict[t]) in keys(datadict) for t in treated])
     match = brs_matching(distancedict,balancedict,sets_count,1e13) #I choose lambda to be 1e13 because I want it to be smaller than the impossible match distance (which is 1e14)
-    CSV.write(string(script_location,"/../data/matched-pairs.csv"), DataFrame(match), header = ["treated","control"])
+    CSV.write(string(script_location,"/../../../../data/matched-pairs.csv"), DataFrame(match), header = ["treated","control"])
       
 end
 
