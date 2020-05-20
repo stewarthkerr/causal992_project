@@ -1,0 +1,198 @@
+---
+title: "Multiple Hypothesis Testing"
+author: "Jeanne Li, Susan Glenn, Stewart Kerr, Jingcheng Xu"
+date: "March 2020"
+header-includes:
+  - \usepackage{bm}
+  - \usepackage{amsmath}
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(tidy.opts=list(width.cutoff=75),tidy=TRUE, echo = TRUE)
+```
+
+# Goal of document
+We run t-test like we previously had done, but this time after implementing CART. We use CART to partition our matched sets into different groups. On each of these partitions, we run independent one-sample t-test and analyze if the treatment effect differs between the subgroups. 
+
+Our tree has 4 subgroups as leaves:
+RSMOKEN=1 and RAGENDER_1.Male=1 (male smokers)
+RSMOKEN=1 and RAGENDER_1.Male=0 and Initial_Income=1,2 (female smokers with initial income level 1 or 2)
+RSMOKEN=1 and RAGENDER_1.Male=0 and Initial_Income=3,4,5 (female smokers with initial income 3, 4 or 5)
+RSMOKEN=2 (nonsmokers)
+
+These test-statistics are used for multiple hypotheses testing using the closed testing method, which we implement in the second part of this document.
+
+## One-sample t-tests on each group
+
+### Subgroup: Male Smokers
+```{r}
+results_final = read.csv('../data/results-final.csv')
+paired <- results_final[1:2182,]
+male_smoke <- subset(paired,RSMOKEN==1 & RAGENDER_1.Male==1)
+t.test(male_smoke$outcome) 
+#p-value = 0.6889 no evidence against null; no trt effect
+```
+### Subgroup: Female smokers initial income 1 or 2
+```{r}
+init_12 <- subset(paired, INITIAL_INCOME==1 | INITIAL_INCOME==2)
+female_smoke_12 <- subset(init_12, RSMOKEN==1 & RAGENDER_1.Male==0)
+t.test(female_smoke_12$outcome)
+#p-value = 0.3406 no evidence against null; no trt effect
+```
+
+### Subgroup: Female smokers initial income 3,4,5
+```{r}
+init_345 <- subset(paired, INITIAL_INCOME==3 | INITIAL_INCOME==4 |INITIAL_INCOME==5)
+female_smoke_345 <- subset(init_345, RSMOKEN==1 & RAGENDER_1.Male==0)
+t.test(female_smoke_345$outcome)
+#p-value = 0.2386 no evidence against null; no trt effect
+```
+
+### Subgroup: Nonsmokers
+```{r}
+nonsmoke <- subset(paired,RSMOKEN==2)
+t.test(nonsmoke$outcome)
+#p-value = 0.0235 moderate evidence against null; possible trt effect
+```
+
+## Closed Testing
+TO DO: 
+INSERT SHORT DESCRIPTION OF CLOSED TESTING
+INSERT HOW WE'LL DO CLOSED TESTING IN OUR CONTEXT.
+INSERT REFERENCES USED FOR CLOSED TESTING.
+
+g1: trt effect of male smokers
+g2: trt effect of female smokers with initial income level 1 or 2
+g3: trt effect of female smokers with iniital income level 3, 4, or 5
+g4: trt effect of nonsmokers
+
+###Closed testing going from bottom to top direction:
+
+#### Pairwise level (g4=g1), (g4=g2), (g4=g3)
+Only nonsmokers group from individual t-test had moderate evidence against null. 
+
+$H_{0}$: $g4=g1$ (nonsmokers and male smokers)
+$H_{1}:$ $g4 \neq g1$
+```{r}
+kruskal.test(list(nonsmoke$outcome,male_smoke$outcome))
+```
+
+$H_{0}$: $g4=g2$ (nonsmokers and female smokers with initial income level 1 or 2)
+$H_{1}:$ $g4 \neq g2$
+```{r}
+kruskal.test(list(nonsmoke$outcome,female_smoke_12$outcome))
+```
+
+$H_{0}$: $g4=g3$ (nonsmokers and female smokers with initial income level 3, 4, or 5)
+$H_{1}:$ $g4 \neq g3$
+```{r}
+kruskal.test(list(nonsmoke$outcome,female_smoke_345$outcome))
+```
+
+###Closed testing going from bottom to top direction:
+Closed testing going from top to bottom direction:
+
+#### Global level (g1=g2=g3=g4)
+$H_{0}$: $g1=g2=g3=g4$
+$H_{1}$: The trt effects of g1, g2, g3, g4 are not all the same
+
+```{r}
+kruskal.test(list(male_smoke$outcome,female_smoke_12$outcome,female_smoke_345$outcome,nonsmoke$outcome))
+```
+We do not have evidence against the null hypothesis, so we do not proceed to test other levels. 
+
+
+
+# Using Pearson's chi-square test for 2x3 contingency table:
+(Just to see if we get different results than the Kruskal-Wallis test)
+
+Using the same method as in STAT641 (see examples in miscellanea.pdf page 18-19). An outcome of -1 is "Worse," 0 is "Same," and 1 is "Better"
+
+$H_{0}$: $g4=g1$ (nonsmokers and male smokers)
+$H_{1}:$ $g4 \neq g1$
+```{r}
+a <- table(nonsmoke$outcome)
+b <- table(male_smoke$outcome)
+c <- matrix(c(a,b),ncol=3,byrow = T)
+colnames(c) <- c(-1,0,1)
+rownames(c) <- c("g4","g1")
+c
+chisq.test(c,correct=F)
+fisher.test(c)
+```
+
+$H_{0}$: $g4=g2$ (nonsmokers and female smokers income level 1 or 2)
+$H_{1}:$ $g4 \neq g2$
+```{r}
+a <- table(nonsmoke$outcome)
+b <- table(female_smoke_12$outcome)
+c <- matrix(c(a,b),ncol=3,byrow = T)
+colnames(c) <- c(-1,0,1)
+rownames(c) <- c("g4","g2")
+c
+chisq.test(c,correct=F)
+fisher.test(c)
+```
+
+$H_{0}$: $g4=g3$ (nonsmokers and female smokers income level 3, 4, or 5)
+$H_{1}:$ $g4 \neq g3$
+```{r}
+a <- table(nonsmoke$outcome)
+b <- table(female_smoke_345$outcome)
+c <- matrix(c(a,b),ncol=3,byrow = T)
+colnames(c) <- c(-1,0,1)
+rownames(c) <- c("g4","g3")
+c
+chisq.test(c,correct=F)
+fisher.test(c)
+```
+
+
+
+
+# Using Pearson's chi-square test for 2x2 contingency table:
+
+Let's see what happens if we throw out all outcomes coded "0" where the control and treatment died in the same wave.
+
+$H_{0}$: $g4=g1$ (nonsmokers and male smokers)
+$H_{1}:$ $g4 \neq g1$
+```{r}
+a <- table(nonsmoke$outcome)
+b <- table(female_smoke_12$outcome)
+c <- matrix(c(a[1],a[3],b[1],b[3]),ncol=2,byrow = T)
+colnames(c) <- c(-1,1)
+rownames(c) <- c("g4","g1")
+c
+chisq.test(c, correct = F)
+fisher.test(c)
+```
+
+
+$H_{0}$: $g4=g2$ (nonsmokers and female smokers income level 1 or 2)
+$H_{1}:$ $g4 \neq g2$
+```{r}
+a <- table(nonsmoke$outcome)
+b <- table(female_smoke_12$outcome)
+c <- matrix(c(a[1],a[3],b[1],b[3]),ncol=2,byrow = T)
+colnames(c) <- c(-1,1)
+rownames(c) <- c("g4","g2")
+c
+chisq.test(c, correct = F)
+fisher.test(c)
+```
+
+
+$H_{0}$: $g4=g3$ (nonsmokers and female smokers income level 3, 4, or 5)
+$H_{1}:$ $g4 \neq g3$
+```{r}
+a <- table(nonsmoke$outcome)
+b <- table(female_smoke_345$outcome)
+c <- matrix(c(a[1],a[3],b[1],b[3]),ncol=2,byrow = T)
+colnames(c) <- c(-1,1)
+rownames(c) <- c("g4","g3")
+c
+chisq.test(c, correct = F)
+fisher.test(c)
+```
+
