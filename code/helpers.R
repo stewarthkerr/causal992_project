@@ -1,6 +1,6 @@
 ## Contains a list of functions used in our data cleaning and analysis
 require(HDMD)
-require(tidyverse)
+require(dplyr)
 require(fastDummies)
 require(MASS)
 require(rpart)
