@@ -7,7 +7,7 @@ Calculates the inverse of the covariance matrix of a matrix
 - `df` The matrix we wish to calculate covariance for, as a DataFrame
 """
 function inv_cov(df::DataFrame)::Matrix{Float64}
-    mat = Matrix(df[:, Not([:HHIDPN, :FIRST_WS, :W])])
+    mat = Matrix(df)
     return inv(mat' * mat)
 end
 
@@ -68,45 +68,58 @@ Uses JuMP to perform balanced risk set matching
 """
 function brs_matching(distance, balance, numsets, lambda)
     #Define match Model
-    m = Model(with_optimizer(GLPK.Optimizer, tm_lim = 360000000, msg_lev = GLPK.ON))
+    m = Model(
+        optimizer_with_attributes(
+            GLPK.Optimizer
+        )
+    )
     
-    ## Constants
-    #Vectors of treated & control individuals
-    treated = unique(first.(keys(distance)))
-    control = unique(last.(keys(distance)))
+    # Constants
+    ### Vectors of treated and control individuals
+    edges = keys(distance)
+    treated = unique(first.(edges))
+    control = unique(last.(edges))
+    treated_control = unique(vcat(treated,control))
 
-    #Vector of balance covariates
+    ### Vector of balance covariates
     bcov = unique(last.(keys(balance)))
 
-    ## Variables
-    #Below variable takes 1 if edge exists, 0 if edge does not
-    @variable(m, f[treated,control], Bin)
-    #Below variable is the positive gap between treated and control for the kth covariates
-    @variable(m, pg[bcov] >= 0 )
-    #The negative gap between treated and control for the kth covariate
-    @variable(m, ng[bcov] >= 0)
+    # Variables
+    @variables(m, begin
+        f[edges], Bin # 1 if edge exists, 0 if edge does not
+        pg[bcov] >= 0 # Positive gap between treated and control 
+        ng[bcov] >= 0 # Negative gap between treated and control
+    end)
 
-    ## Contraints
-    #There are a total of S sets
-    @constraint(m, sum(f[i,j] for i in treated, j in control) >= numsets)
-    # Each person is in at most 1 set
-    @constraint(m, a[j in control], sum(f[i,j] for i in treated) <= 1 )
-    @constraint(m, a2[i in treated], sum(f[i,j] for j in control) <= 1 )
-    #Enforces perfect balance
-    @constraint(m, c[k in bcov], (sum(f[i,j]*balance[i,k] - f[i,j]*balance[j,k] for i in treated, j in control))  <= pg[k])
-    @constraint(m, c2[k in bcov], (sum(f[i,j]*balance[j,k] - f[i,j]*balance[i,k] for i in treated, j in control)) <= ng[k])
+    # Constraints
+    ### There are a total of S sets
+    @constraint(m, sum(f[i] for i in edges) >= numsets)
+    ### Each person is in at most 1 set
+    @constraint(m, a[i in treated_control], 
+        (sum(f[(i,j)] for j in control if (i,j) in edges) + 
+        sum(f[(j,i)] for j in treated if (j,i) in edges)) 
+        <= 1) 
+    ### Enforces perfect balance
+    @constraint(m, c[k in bcov], sum(f[(i,j)]*balance[i,k] - f[(i,j)]*balance[j,k] 
+        for i in treated, j in control
+        if (i,j) in edges)  
+        <= pg[k])
+    @constraint(m, c2[k in bcov], sum(f[(i,j)]*balance[j,k] - f[(i,j)]*balance[i,k] 
+        for i in treated, j in control
+        if (i,j) in edges) 
+        <= ng[k])
 
-    ## Objective
-    @objective(m, Min, sum(f[i,j] * distance[i,j] for i in treated, j in control) + sum(lambda*(pg[k]+ng[k]) for k in bcov))
+    # Objective
+    @objective(m, Min, sum(f[i] * distance[i] for i in edges) + sum(lambda*(pg[k]+ng[k]) for k in bcov))
     optimize!(m)
 
-    #Check if we actually found a solution
+    # Check if we actually found a solution
     val = objective_value(m)
-    val < LARGE_DIST || error("This matching is infeasible.")
+    val < Inf || error("This matching is infeasible.")
 
-    #Return Sx2 matrix of the IDs in the matched pair
-    assignment = [ (JuMP.value(f[i,j])) for i in treated, j in control ]
-    return matched_sets(treated,control,assignment)
+    # Return Sx2 matrix of the IDs in the matched pair
+    assignment = [ i for i in edges if (JuMP.value(f[i])) > 0]
+    return assignment
 end
 
 """
@@ -149,29 +162,51 @@ function main()
 
     #This allows us to read the data in 
     script_location = @__DIR__
-    df = CSV.read(string(script_location,"/../../../../data/data-stacked.csv"))
+    df = CSV.read(string(script_location,"/../data/data-stacked.csv"))
 
     #Create dictionaries
     wsdict = Dict(r[:HHIDPN] => r[:FIRST_WS] for r in eachrow(unique(df[:,[:HHIDPN, :FIRST_WS]])))    
     datadict = Dict( (r[:HHIDPN], r[:W])::Tuple{Int64,Int64} => Vector(r[Not([:HHIDPN, :FIRST_WS, :W])])::Vector{Float64} for r in eachrow(df))
     treated = [ i for i in keys(wsdict) if wsdict[i] != -1 ]
-    control = collect(keys(wsdict))
+    ### If someone experiences wage shock in first year (2) then they can't be control
+    control = [i for i in keys(wsdict) if wsdict[i] != 2] 
 
     #Build the balance matrix/dictionary on column #22 - gender, #14 - ever smoke at baseline, #23 hispanic, #13 initial earnings, #29 = initial wealth, 30 = initial income
     #datadict[j,2][23] == The 23rd covariate in the 2nd year for the jth control
     balance_cov = [29]
-    balancedict = Dict( (j,i) => datadict[j,wavelookup(datadict,j)][i] for j in control, i in balance_cov)
+    balancedict = Dict( (j,i) => datadict[j,wavelookup(datadict,j)][i] for j in keys(wsdict), i in balance_cov)
     
-    #Calculate the distance matrix as a dictionary
-    S = inv_cov(df)
-    distancedict = Dict( (i, j) => pairwise_mahalanobis(i, j, S, df, wsdict, datadict) for i in treated, j in control )
+    #Calculate the distance matrix as a dictionary -- if match is impossible not in dictionary
+    S = inv_cov(df[:, Not([:HHIDPN, :FIRST_WS, :W])])
+    distancedict = Dict( (i, j) => pairwise_mahalanobis(i, j, S, df, wsdict, datadict) 
+        for i in treated, j in control 
+        if pairwise_mahalanobis(i, j, S, df, wsdict, datadict) < 1e14)
 
     # Perform the matching for the maximum number of possible sets;
-    count = sum([(t,wsdict[t]) in keys(datadict) for t in treated])
-    match = brs_matching(distancedict,balancedict,count,1e13) #I choose lambda to be 1e13 because I want it to be smaller than the impossible match distance (which is 1e14)
-    CSV.write(string(script_location,"/../../../../data/matched-pairs-compute.csv"), DataFrame(match), header = ["treated","control"])
+    sets_count = sum([(t,wsdict[t]) in keys(datadict) for t in treated])
+    match = brs_matching(distancedict,balancedict,sets_count,1e13) #I choose lambda to be 1e13 because I want it to be smaller than the impossible match distance (which is 1e14)
+    CSV.write(string(script_location,"/../data/matched-pairs.csv"), DataFrame(match), header = ["treated","control"])
       
 end
 
-#end # module
+"""
+After initial matching and CART, repairs the remaining observations
+"""
+function repairing()
+
+    #This allows us to read the data in 
+    script_location = @__DIR__
+    df = CSV.read(string(script_location,"/../data/data-repairing.csv"))
+
+    #Create dictionaries
+    wsdict = Dict(r[:HHIDPN] => r[:FIRST_WS] for r in eachrow(unique(df[:,[:HHIDPN, :FIRST_WS]])))    
+    treateddict = Dict(r[:HHIDPN] => r[:treated] for r in eachrow(unique(df[:,[:HHIDPN, :treated]])))
+    datadict = Dict( (r[:HHIDPN], r[:W])::Tuple{Int64,Int64} => Vector(r[Not([:HHIDPN, :FIRST_WS, :W, :treated])])::Vector{Int64} for r in eachrow(df))
+    treated = [ i for i in keys(treateddict) if treateddict[i] == 1]
+    control = [ i for i in keys(treateddict) if treateddict[i] == 0]
+
+end
+
+
+
 

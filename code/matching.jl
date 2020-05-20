@@ -69,7 +69,7 @@ function brs_matching(distance, balance, numsets, lambda)
     #Define match Model
     m = Model(
         optimizer_with_attributes(
-            Gurobi.Optimizer, "Presolve" => 0, "OutputFlag" => 1, "NodefileStart" => 0.5
+            Gurobi.Optimizer, "Presolve" => 0, "OutputFlag" => 0, "NodefileStart" => 0.1, "Threads" => 1,
         )
     )
     
