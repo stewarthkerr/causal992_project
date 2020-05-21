@@ -73,7 +73,7 @@ control_CART = filter(control, pair_ID %in% CART_exact_obs) %>%
                 one_of(exact_matches),
                 one_of(CART_covariates))
 matched_pairs = inner_join(treated_CART,control_CART, by = c("pair_ID","outcome",exact_matches,CART_covariates), suffix = c(".treated",".control"))
-write.csv(matched_pairs, "../data/matched_pairs.CART.csv", row.names = FALSE)
+write.csv(matched_pairs, "../data/matched-pairs.CART.csv", row.names = FALSE)
 
 ### Recode the outcome for CART (directionless)
 CART_input = mutate(matched_pairs, CART_outcome = abs(outcome)) %>%

@@ -72,7 +72,7 @@ p1 <- ggplot(plot.dataframe,aes(x=abs.stand.diff,y=covariates))+geom_point(size=
 ```{r}
 after_match <- read.csv("../data/results-final.csv")
 #Load matches
-matched_pairs.CART <- read.csv("../data/matched_pairs.CART.csv")
+matched_pairs.CART <- read.csv("../data/matched-pairs.CART.csv")
 after_CART <- subset(after_match, pair_ID %in% matched_pairs.CART$pair_ID)
 
 ##After matching
