@@ -17,4 +17,16 @@ data_stacked = read.csv("../data/data-stacked.csv")
 repair_keys = results_final[results_final$pair_ID %in% matched_pairs.CART$pair_ID, c("HHIDPN","treated_wave")]
 repair_df = data_stacked[!(data_stacked$HHIDPN %in% repair_IDs), c("HHIDPN","W",CART_covariates)] %>%
   inner_join(select(results_final,HHIDPN,treated_wave,treated), by = c("HHIDPN" = "HHIDPN", "W" = "treated_wave"))
-write.csv(repair_df, "../data/data-repairing.csv", row.names = FALSE)
+
+# Use optmatch to do the exact matching
+em = exactMatch(as.formula(paste0("treated ~ W + ", paste0(CART_covariates, collapse = " + "))), data = repair_df)
+pm = pairmatch(em, data = repair_df)
+### This checks to make sure the order is the same
+if (all.equal(names(pm), row.names(repair_df))){
+  repaired_df = cbind(repair_df, pair_ID = pm)
+}
+
+# Calculate outcome for repaired individuals
+
+# Combine repaired matches with original matches for final analysis set
+
