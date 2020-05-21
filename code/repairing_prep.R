@@ -14,7 +14,7 @@ data_stacked = read.csv("../data/data-stacked.csv")
 
 # Build the data to do matching while keeping treated and control
 # We do an inner_join because we don't want to add back people who werent in the original match (to not mess with balance)
-repair_IDs = results_final[results_final$pair_ID %in% matched_pairs.CART$pair_ID,]$HHIDPN
-repair_df = data_stacked[!(data_stacked$HHIDPN %in% repair_IDs), c("HHIDPN","W","FIRST_WS",CART_covariates)] %>%
-  inner_join(select(results_final,HHIDPN,treated), by = "HHIDPN")
+repair_keys = results_final[results_final$pair_ID %in% matched_pairs.CART$pair_ID, c("HHIDPN","treated_wave")]
+repair_df = data_stacked[!(data_stacked$HHIDPN %in% repair_IDs), c("HHIDPN","W",CART_covariates)] %>%
+  inner_join(select(results_final,HHIDPN,treated_wave,treated), by = c("HHIDPN" = "HHIDPN", "W" = "treated_wave"))
 write.csv(repair_df, "../data/data-repairing.csv", row.names = FALSE)

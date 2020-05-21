@@ -1,5 +1,4 @@
 # This is the script for finding subgroups using the CART algorthim from the rpart package
-# TODO: Use mipmatch to do repairing
 
 # Choose which covariates to exact match on
 exact_covariates = c("RSMOKEN", "RAGENDER_1.Male", "INITIAL_INCOME", "RSHLT")

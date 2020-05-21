@@ -51,8 +51,7 @@ results_final = mutate(results_final, treated = ifelse(origin == 1, 1, 0)) %>%
 
 #Join the covariates
 results_final = left_join(results_final, df_stacked,
-                          by = c("HHIDPN" = "HHIDPN", "treated_wave" = "W")) %>%
-  dplyr::select(-treated_wave)
+                          by = c("HHIDPN" = "HHIDPN", "treated_wave" = "W"))
 
 #Return RADYEAR back to NA if they're still living
 results_final$RADYEAR = ifelse(results_final$RADYEAR == 3000, NA, results_final$RADYEAR)
