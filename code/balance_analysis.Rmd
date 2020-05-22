@@ -17,7 +17,7 @@ after <- read.csv("../data/results-final.csv")
 #Load data before matching
 before <- read.csv("../data/data-stacked.csv")
 #Create a vector of columns for which we want to check balance
-balance_cols = colnames(after)[8:ncol(after)]
+balance_cols = colnames(after)[9:ncol(after)]
 
 #making an outcome variable for before matching
 before$treated[before$FIRST_WS == -1] = 0
