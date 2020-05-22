@@ -188,25 +188,3 @@ function main()
     CSV.write(string(script_location,"/../../../../data/matched-pairs.csv"), DataFrame(match), header = ["treated","control"])
       
 end
-
-"""
-After initial matching and CART, repairs the remaining observations
-"""
-function repairing()
-
-    #This allows us to read the data in 
-    script_location = @__DIR__
-    df = CSV.read(string(script_location,"/../data/data-repairing.csv"))
-
-    #Create dictionaries
-    wsdict = Dict(r[:HHIDPN] => r[:FIRST_WS] for r in eachrow(unique(df[:,[:HHIDPN, :FIRST_WS]])))    
-    treateddict = Dict(r[:HHIDPN] => r[:treated] for r in eachrow(unique(df[:,[:HHIDPN, :treated]])))
-    datadict = Dict( (r[:HHIDPN], r[:W])::Tuple{Int64,Int64} => Vector(r[Not([:HHIDPN, :FIRST_WS, :W, :treated])])::Vector{Int64} for r in eachrow(df))
-    treated = [ i for i in keys(treateddict) if treateddict[i] == 1]
-    control = [ i for i in keys(treateddict) if treateddict[i] == 0]
-
-end
-
-
-
-
