@@ -65,7 +65,7 @@ Uses JuMP to perform balanced risk set matching
 - `numsets`  Number of matched pairs we want
 - `lambda`   Penalty assessed for violating fine balance, typically will be the sum of all distances in distance matrix
 """
-function brs_matching(distance, balance, numsets, lambda)
+function brs_matching(distance, balance, numsets)
     #Define match Model
     m = Model(
         optimizer_with_attributes(
@@ -82,6 +82,9 @@ function brs_matching(distance, balance, numsets, lambda)
 
     ### Vector of balance covariates
     bcov = unique(last.(keys(balance)))
+
+    ### Lambda - the penalty for breaking balance
+    lambda = sum(values(distance))+1
 
     # Variables
     @variables(m, begin
@@ -163,6 +166,10 @@ function main()
     script_location = @__DIR__
     df = CSV.read(string(script_location,"/../data/data-stacked.csv"))
 
+    #Remove the categorized wealth and income covariates for matching
+    variables = names(df)[1:43]
+    df = df[!, variables]
+
     #Create dictionaries
     wsdict = Dict(r[:HHIDPN] => r[:FIRST_WS] for r in eachrow(unique(df[:,[:HHIDPN, :FIRST_WS]])))    
     datadict = Dict( (r[:HHIDPN], r[:W])::Tuple{Int64,Int64} => Vector(r[Not([:HHIDPN, :FIRST_WS, :W])])::Vector{Float64} for r in eachrow(df))
@@ -172,7 +179,7 @@ function main()
 
     #Build the balance matrix/dictionary on column #22 - gender, #14 - ever smoke at baseline, #23 hispanic, #13 initial earnings, #29 = initial wealth, 30 = initial income
     #datadict[j,2][23] == The 23rd covariate in the 2nd year for the jth control
-    balance_cov = [29]
+    balance_cov = [14]
     balancedict = Dict( (j,i) => datadict[j,wavelookup(datadict,j)][i] for j in keys(wsdict), i in balance_cov)
     
     #Calculate the distance matrix as a dictionary -- if match is impossible not in dictionary
@@ -183,7 +190,7 @@ function main()
 
     # Perform the matching for the maximum number of possible sets;
     sets_count = sum([(t,wsdict[t]) in keys(datadict) for t in treated])
-    match = brs_matching(distancedict,balancedict,sets_count,1e13) #I choose lambda to be 1e13 because I want it to be smaller than the impossible match distance (which is 1e14)
+    match = brs_matching(distancedict,balancedict,sets_count) 
     CSV.write(string(script_location,"/../data/matched-pairs.csv"), DataFrame(match), header = ["treated","control"])
       
 end

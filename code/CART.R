@@ -83,16 +83,22 @@ CART_input = mutate(matched_pairs, CART_outcome = abs(outcome)) %>%
 CART_input = mutate_all(CART_input, factor)
 
 ### Build the final CART
-final_tree = rpart(CART_outcome ~ ., data = CART_input)
+final_tree = rpart(CART_outcome ~ ., data = CART_input, model = TRUE)
 rpart.plot(final_tree)
 
 ### This gets what leaf each pair ends on:
-leaf = final_tree$where
+final_tree$frame$node = rownames(final_tree$frame)
+leaves = final_tree$frame[final_tree$where, "rownum"]
+
+### This extracts the dataframe used to build the CART tree
+tree_df = final_tree$model
+
+### This can be used to get the path of each leaf
+path.rpart(final_tree, unique(leaves))
 
 ### Save the covariates used in CART
 CART_covariates = names(final_tree$variable.importance)
 write.csv(CART_covariates, "../data/CART-covariates.csv", row.names = FALSE)
-
 
 # ###################################EXTRA###################################
 # 
