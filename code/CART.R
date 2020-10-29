@@ -88,7 +88,7 @@ rpart.plot(final_tree)
 
 ### This gets what leaf each pair ends on:
 final_tree$frame$node = rownames(final_tree$frame)
-leaves = final_tree$frame[final_tree$where, "rownum"]
+leaves = final_tree$frame[final_tree$where, "node"]
 
 ### This extracts the dataframe used to build the CART tree
 tree_df = final_tree$model
